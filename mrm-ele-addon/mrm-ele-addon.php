@@ -155,10 +155,30 @@ final class MRM_Ele_Addon {
         // Include Widget files
         require_once(__DIR__ . '/widgets/demo-widget.php');
         require_once(__DIR__ . '/widgets/mrm-header-widget.php');
+        require_once(__DIR__ . '/widgets/hero-slider-widget.php');
+        require_once(__DIR__ . '/widgets/feature-box-widget.php');
+        require_once(__DIR__ . '/widgets/cause-box-widget.php');
+        require_once(__DIR__ . '/widgets/about-charity-widget.php');
+        require_once(__DIR__ . '/widgets/event-box-widget.php');
+        require_once(__DIR__ . '/widgets/volunteer-box-widget.php');
+        require_once(__DIR__ . '/widgets/blog-box-widget.php');
+        require_once(__DIR__ . '/widgets/get-in-touch-widget.php');
+        require_once(__DIR__ . '/widgets/contact-form-widget.php');
+        require_once(__DIR__ . '/widgets/footer-widget.php');
 
         // Register widgets
         $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Demo_Widget());
         $widgets_manager->register(new \MRM_Ele_Addon\Widgets\MRM_Header_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Hero_Slider_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Feature_Box_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Cause_Box_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\About_Charity_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Event_Box_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Volunteer_Box_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Blog_Box_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Get_In_Touch_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Contact_Form_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Footer_Widget());
     }
 
     /**
