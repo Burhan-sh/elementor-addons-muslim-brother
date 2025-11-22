@@ -154,9 +154,11 @@ final class MRM_Ele_Addon {
     public function register_widgets($widgets_manager) {
         // Include Widget files
         require_once(__DIR__ . '/widgets/demo-widget.php');
+        require_once(__DIR__ . '/widgets/mrm-header-widget.php');
 
-        // Register widget
+        // Register widgets
         $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Demo_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\MRM_Header_Widget());
     }
 
     /**
