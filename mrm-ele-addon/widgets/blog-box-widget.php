@@ -38,32 +38,46 @@ class Blog_Box_Widget extends Widget_Base {
 
     protected function register_controls() {
         
-        // Content Section
+        // Query Section
         $this->start_controls_section(
-            'content_section',
+            'query_section',
             [
-                'label' => esc_html__('Content', 'mrm-ele-addon'),
+                'label' => esc_html__('Query', 'mrm-ele-addon'),
                 'tab' => Controls_Manager::TAB_CONTENT,
             ]
         );
 
         $this->add_control(
-            'image',
+            'post_id',
             [
-                'label' => esc_html__('Featured Image', 'mrm-ele-addon'),
-                'type' => Controls_Manager::MEDIA,
-                'default' => [
-                    'url' => 'https://images.unsplash.com/photo-1593113598332-cd288d649433?w=500',
-                ],
+                'label' => esc_html__('Select Post', 'mrm-ele-addon'),
+                'type' => Controls_Manager::SELECT2,
+                'options' => $this->get_all_posts(),
+                'label_block' => true,
+                'description' => esc_html__('Select a specific blog post to display', 'mrm-ele-addon'),
+            ]
+        );
+
+        $this->end_controls_section();
+
+        // Content Section
+        $this->start_controls_section(
+            'content_section',
+            [
+                'label' => esc_html__('Content Settings', 'mrm-ele-addon'),
+                'tab' => Controls_Manager::TAB_CONTENT,
             ]
         );
 
         $this->add_control(
-            'date',
+            'default_image',
             [
-                'label' => esc_html__('Date', 'mrm-ele-addon'),
-                'type' => Controls_Manager::TEXT,
-                'default' => '20 NOV',
+                'label' => esc_html__('Default Image (Fallback)', 'mrm-ele-addon'),
+                'type' => Controls_Manager::MEDIA,
+                'default' => [
+                    'url' => \Elementor\Utils::get_placeholder_image_src(),
+                ],
+                'description' => esc_html__('This image will be used if the post has no featured image', 'mrm-ele-addon'),
             ]
         );
 
@@ -80,11 +94,20 @@ class Blog_Box_Widget extends Widget_Base {
         );
 
         $this->add_control(
-            'author',
+            'date_format',
             [
-                'label' => esc_html__('Author', 'mrm-ele-addon'),
-                'type' => Controls_Manager::TEXT,
-                'default' => 'Admin',
+                'label' => esc_html__('Date Format', 'mrm-ele-addon'),
+                'type' => Controls_Manager::SELECT,
+                'default' => 'd M',
+                'options' => [
+                    'd M' => esc_html__('20 NOV', 'mrm-ele-addon'),
+                    'M d' => esc_html__('NOV 20', 'mrm-ele-addon'),
+                    'd F Y' => esc_html__('20 November 2024', 'mrm-ele-addon'),
+                    'F d, Y' => esc_html__('November 20, 2024', 'mrm-ele-addon'),
+                ],
+                'condition' => [
+                    'show_date' => 'yes',
+                ],
             ]
         );
 
@@ -116,18 +139,9 @@ class Blog_Box_Widget extends Widget_Base {
         );
 
         $this->add_control(
-            'comments',
-            [
-                'label' => esc_html__('Comments', 'mrm-ele-addon'),
-                'type' => Controls_Manager::TEXT,
-                'default' => '5 Comments',
-            ]
-        );
-
-        $this->add_control(
             'show_comments',
             [
-                'label' => esc_html__('Show Comments', 'mrm-ele-addon'),
+                'label' => esc_html__('Show Comments Count', 'mrm-ele-addon'),
                 'type' => Controls_Manager::SWITCHER,
                 'label_on' => esc_html__('Yes', 'mrm-ele-addon'),
                 'label_off' => esc_html__('No', 'mrm-ele-addon'),
@@ -152,22 +166,14 @@ class Blog_Box_Widget extends Widget_Base {
         );
 
         $this->add_control(
-            'title',
+            'excerpt_length',
             [
-                'label' => esc_html__('Title', 'mrm-ele-addon'),
-                'type' => Controls_Manager::TEXT,
-                'default' => 'How Your Donations Create Real Impact',
-                'label_block' => true,
-            ]
-        );
-
-        $this->add_control(
-            'excerpt',
-            [
-                'label' => esc_html__('Excerpt', 'mrm-ele-addon'),
-                'type' => Controls_Manager::TEXTAREA,
-                'default' => 'Discover the journey of your contribution and see how it transforms lives across communities.',
-                'label_block' => true,
+                'label' => esc_html__('Excerpt Length (words)', 'mrm-ele-addon'),
+                'type' => Controls_Manager::NUMBER,
+                'default' => 20,
+                'min' => 5,
+                'max' => 100,
+                'description' => esc_html__('Number of words to show in excerpt before truncation', 'mrm-ele-addon'),
             ]
         );
 
@@ -191,17 +197,6 @@ class Blog_Box_Widget extends Widget_Base {
                 'default' => 'Read More',
                 'condition' => [
                     'show_read_more' => 'yes',
-                ],
-            ]
-        );
-
-        $this->add_control(
-            'link',
-            [
-                'label' => esc_html__('Link', 'mrm-ele-addon'),
-                'type' => Controls_Manager::URL,
-                'default' => [
-                    'url' => '#',
                 ],
             ]
         );
@@ -405,43 +400,134 @@ class Blog_Box_Widget extends Widget_Base {
         $this->end_controls_section();
     }
 
+    /**
+     * Get all posts for dropdown
+     */
+    private function get_all_posts() {
+        $posts = get_posts([
+            'post_type' => 'post',
+            'post_status' => 'publish',
+            'posts_per_page' => -1,
+            'orderby' => 'date',
+            'order' => 'DESC',
+        ]);
+
+        $options = ['' => esc_html__('Select a Post', 'mrm-ele-addon')];
+        
+        foreach ($posts as $post) {
+            $options[$post->ID] = $post->post_title;
+        }
+
+        return $options;
+    }
+
+    /**
+     * Truncate text to specified word count
+     */
+    private function truncate_text($text, $word_limit) {
+        $words = explode(' ', $text);
+        if (count($words) > $word_limit) {
+            return implode(' ', array_slice($words, 0, $word_limit)) . '...';
+        }
+        return $text;
+    }
+
     protected function render() {
         $settings = $this->get_settings_for_display();
+        
+        // Get the post ID from settings
+        $post_id = $settings['post_id'];
+        
+        // If no post selected, get the latest post
+        if (empty($post_id)) {
+            $latest_posts = get_posts([
+                'post_type' => 'post',
+                'post_status' => 'publish',
+                'posts_per_page' => 1,
+                'orderby' => 'date',
+                'order' => 'DESC',
+            ]);
+            
+            if (!empty($latest_posts)) {
+                $post_id = $latest_posts[0]->ID;
+            } else {
+                echo '<div class="mrm-blog-card"><p>' . esc_html__('No blog posts found. Please create a blog post first.', 'mrm-ele-addon') . '</p></div>';
+                return;
+            }
+        }
+        
+        // Get the post object
+        $post = get_post($post_id);
+        
+        if (!$post) {
+            echo '<div class="mrm-blog-card"><p>' . esc_html__('Post not found.', 'mrm-ele-addon') . '</p></div>';
+            return;
+        }
+        
+        // Get post data
+        $post_title = get_the_title($post_id);
+        $post_link = get_permalink($post_id);
+        $post_author = get_the_author_meta('display_name', $post->post_author);
+        $post_date = get_the_date($settings['date_format'], $post_id);
+        $comments_count = get_comments_number($post_id);
+        
+        // Get featured image or default
+        if (has_post_thumbnail($post_id)) {
+            $post_image = get_the_post_thumbnail_url($post_id, 'medium_large');
+        } else {
+            $post_image = !empty($settings['default_image']['url']) ? $settings['default_image']['url'] : \Elementor\Utils::get_placeholder_image_src();
+        }
+        
+        // Get excerpt
+        if (!empty($post->post_excerpt)) {
+            $excerpt = $post->post_excerpt;
+        } else {
+            $excerpt = wp_strip_all_tags($post->post_content);
+        }
+        
+        // Truncate excerpt based on word limit
+        $excerpt = $this->truncate_text($excerpt, $settings['excerpt_length']);
+        
+        // Format comments text
+        if ($comments_count == 0) {
+            $comments_text = esc_html__('No Comments', 'mrm-ele-addon');
+        } elseif ($comments_count == 1) {
+            $comments_text = esc_html__('1 Comment', 'mrm-ele-addon');
+        } else {
+            $comments_text = sprintf(esc_html__('%s Comments', 'mrm-ele-addon'), $comments_count);
+        }
         ?>
 
         <div class="mrm-blog-card">
             <div class="blog-image">
-                <img src="<?php echo esc_url($settings['image']['url']); ?>" alt="<?php echo esc_attr($settings['title']); ?>">
-                <?php if ($settings['show_date'] === 'yes' && !empty($settings['date'])) : ?>
-                <span class="blog-date"><?php echo esc_html($settings['date']); ?></span>
+                <img src="<?php echo esc_url($post_image); ?>" alt="<?php echo esc_attr($post_title); ?>">
+                <?php if ($settings['show_date'] === 'yes') : ?>
+                <span class="blog-date"><?php echo esc_html(strtoupper($post_date)); ?></span>
                 <?php endif; ?>
             </div>
             
             <div class="blog-content">
                 <div class="blog-meta">
-                    <?php if ($settings['show_author'] === 'yes' && !empty($settings['author'])) : ?>
+                    <?php if ($settings['show_author'] === 'yes') : ?>
                     <span>
                         <?php Icons_Manager::render_icon($settings['author_icon'], ['aria-hidden' => 'true']); ?>
-                        <?php echo esc_html($settings['author']); ?>
+                        <?php echo esc_html($post_author); ?>
                     </span>
                     <?php endif; ?>
                     
-                    <?php if ($settings['show_comments'] === 'yes' && !empty($settings['comments'])) : ?>
+                    <?php if ($settings['show_comments'] === 'yes') : ?>
                     <span>
                         <?php Icons_Manager::render_icon($settings['comments_icon'], ['aria-hidden' => 'true']); ?>
-                        <?php echo esc_html($settings['comments']); ?>
+                        <?php echo esc_html($comments_text); ?>
                     </span>
                     <?php endif; ?>
                 </div>
                 
-                <h3><?php echo esc_html($settings['title']); ?></h3>
-                <p><?php echo esc_html($settings['excerpt']); ?></p>
+                <h3><?php echo esc_html($post_title); ?></h3>
+                <p><?php echo esc_html($excerpt); ?></p>
                 
-                <?php if ($settings['show_read_more'] === 'yes' && !empty($settings['read_more_text'])) : 
-                    $target = $settings['link']['is_external'] ? ' target="_blank"' : '';
-                    $nofollow = $settings['link']['nofollow'] ? ' rel="nofollow"' : '';
-                ?>
-                <a href="<?php echo esc_url($settings['link']['url']); ?>" class="blog-link" <?php echo $target . $nofollow; ?>>
+                <?php if ($settings['show_read_more'] === 'yes' && !empty($settings['read_more_text'])) : ?>
+                <a href="<?php echo esc_url($post_link); ?>" class="blog-link">
                     <?php echo esc_html($settings['read_more_text']); ?> <i class="fas fa-arrow-right"></i>
                 </a>
                 <?php endif; ?>
