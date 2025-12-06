@@ -1,0 +1,305 @@
+/* MRM CF7 Popup Widget Styles */
+
+/* Button Wrapper */
+.mrm-cf7-popup-button-wrapper {
+    display: block;
+}
+
+.mrm-cf7-popup-trigger {
+    display: inline-block;
+    padding: 15px 30px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    line-height: 1;
+}
+
+.mrm-cf7-popup-trigger:focus {
+    outline: none;
+}
+
+/* Popup Modal */
+.mrm-cf7-popup-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.mrm-cf7-popup-modal.active {
+    display: flex;
+    opacity: 1;
+}
+
+.mrm-cf7-popup-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+}
+
+.mrm-cf7-popup-content {
+    position: relative;
+    background: #fff;
+    padding: 40px;
+    border-radius: 10px;
+    max-height: 90vh;
+    overflow-y: auto;
+    z-index: 10;
+    animation: popupSlideIn 0.4s ease-out;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+@keyframes popupSlideIn {
+    from {
+        transform: translateY(-50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+/* Close Button */
+.mrm-cf7-popup-close {
+    position: absolute;
+    top: 15px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 30px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 5px;
+    transition: all 0.3s ease;
+    z-index: 11;
+}
+
+.mrm-cf7-popup-close:hover {
+    transform: rotate(90deg);
+}
+
+.mrm-cf7-popup-close:focus {
+    outline: none;
+}
+
+/* Form Styles */
+.mrm-cf7-popup-form {
+    width: 100%;
+}
+
+.mrm-cf7-popup-form .wpcf7-form {
+    margin: 0;
+}
+
+.mrm-cf7-popup-form .wpcf7-form p {
+    margin-bottom: 20px;
+}
+
+.mrm-cf7-popup-form input:not([type="submit"]),
+.mrm-cf7-popup-form textarea,
+.mrm-cf7-popup-form select {
+    width: 100%;
+    padding: 12px 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 15px;
+    transition: border-color 0.3s ease;
+    font-family: inherit;
+    outline: none;
+}
+
+.mrm-cf7-popup-form input:not([type="submit"]):focus,
+.mrm-cf7-popup-form textarea:focus,
+.mrm-cf7-popup-form select:focus {
+    border-color: #ff5722;
+}
+
+.mrm-cf7-popup-form textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.mrm-cf7-popup-form input[type="submit"] {
+    width: 100%;
+    padding: 15px 30px;
+    border: none;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    font-family: inherit;
+}
+
+.mrm-cf7-popup-form input[type="submit"]:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+}
+
+/* Hide Labels */
+.mrm-cf7-popup-form.hide-labels label {
+    display: none !important;
+}
+
+/* CF7 Response Messages */
+.mrm-cf7-popup-form .wpcf7-response-output {
+    border: none;
+    padding: 15px;
+    margin-top: 20px;
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.mrm-cf7-popup-form .wpcf7-mail-sent-ok {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.mrm-cf7-popup-form .wpcf7-validation-errors,
+.mrm-cf7-popup-form .wpcf7-mail-sent-ng {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.mrm-cf7-popup-form .wpcf7-spam-blocked {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* Field Validation */
+.mrm-cf7-popup-form .wpcf7-not-valid-tip {
+    color: #dc3545;
+    font-size: 13px;
+    margin-top: 5px;
+    display: block;
+}
+
+.mrm-cf7-popup-form .wpcf7-not-valid {
+    border-color: #dc3545 !important;
+}
+
+/* Spinner */
+.mrm-cf7-popup-form .wpcf7-spinner {
+    margin: 0 10px;
+}
+
+/* Form Control Wrap */
+.mrm-cf7-popup-form .wpcf7-form-control-wrap {
+    display: block;
+    position: relative;
+}
+
+/* Checkbox and Radio */
+.mrm-cf7-popup-form .wpcf7-list-item {
+    margin: 0 0 10px 0;
+}
+
+.mrm-cf7-popup-form .wpcf7-list-item-label {
+    margin-left: 8px;
+}
+
+/* File Upload */
+.mrm-cf7-popup-form input[type="file"] {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+/* Acceptance */
+.mrm-cf7-popup-form .wpcf7-acceptance {
+    margin: 15px 0;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .mrm-cf7-popup-content {
+        width: 95% !important;
+        padding: 30px 20px;
+        margin: 20px;
+    }
+
+    .mrm-cf7-popup-close {
+        top: 10px;
+        right: 10px;
+        font-size: 25px;
+    }
+
+    .mrm-cf7-popup-form input:not([type="submit"]),
+    .mrm-cf7-popup-form textarea,
+    .mrm-cf7-popup-form select {
+        font-size: 14px;
+        padding: 10px 12px;
+    }
+}
+
+@media (max-width: 480px) {
+    .mrm-cf7-popup-content {
+        padding: 25px 15px;
+    }
+
+    .mrm-cf7-popup-trigger {
+        padding: 12px 24px;
+        font-size: 14px;
+    }
+}
+
+/* Loading State */
+.mrm-cf7-popup-form.submitting {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Success Animation */
+@keyframes successPulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.mrm-cf7-popup-form .wpcf7-mail-sent-ok {
+    animation: successPulse 0.5s ease;
+}
+
+/* Accessibility */
+.mrm-cf7-popup-modal:focus-within {
+    outline: none;
+}
+
+.mrm-cf7-popup-content:focus {
+    outline: none;
+}
+
+/* Prevent Body Scroll when Popup is Open */
+body.mrm-popup-open {
+    overflow: hidden;
+}
+
+/* RTL Support */
+[dir="rtl"] .mrm-cf7-popup-close {
+    right: auto;
+    left: 15px;
+}
+
+[dir="rtl"] .mrm-cf7-popup-form .wpcf7-list-item-label {
+    margin-left: 0;
+    margin-right: 8px;
+}
