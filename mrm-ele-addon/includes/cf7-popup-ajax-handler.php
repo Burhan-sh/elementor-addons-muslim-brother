@@ -73,9 +73,6 @@ class MRM_CF7_Popup_AJAX_Handler {
      * Send data to Google Sheets
      */
     private function send_to_google_sheets($sheet_id, $sheet_name, $api_key, $data) {
-        // Google Sheets API endpoint
-        $url = "https://sheets.googleapis.com/v4/spreadsheets/{$sheet_id}/values/{$sheet_name}:append";
-        
         // Prepare values
         $values = array();
         $row = array();
@@ -92,6 +89,14 @@ class MRM_CF7_Popup_AJAX_Handler {
             'majorDimension' => 'ROWS'
         );
 
+        // Build Google Sheets API URL with API key
+        $url = sprintf(
+            'https://sheets.googleapis.com/v4/spreadsheets/%s/values/%s:append?key=%s&valueInputOption=USER_ENTERED',
+            $sheet_id,
+            $sheet_name,
+            $api_key
+        );
+
         // Make API request
         $response = wp_remote_post($url, array(
             'headers' => array(
@@ -100,8 +105,6 @@ class MRM_CF7_Popup_AJAX_Handler {
             'body' => wp_json_encode($body),
             'timeout' => 30,
             'sslverify' => true,
-        ) + array(
-            'url' => $url . '?key=' . $api_key . '&valueInputOption=USER_ENTERED'
         ));
 
         if (is_wp_error($response)) {
@@ -120,9 +123,12 @@ class MRM_CF7_Popup_AJAX_Handler {
                 'data' => json_decode($response_body, true)
             );
         } else {
+            // Log detailed error for debugging
+            error_log('MRM CF7 Popup - Google Sheets API Error: ' . $response_body);
             return array(
                 'success' => false,
-                'message' => 'API request failed with status code: ' . $response_code
+                'message' => 'API request failed with status code: ' . $response_code,
+                'details' => json_decode($response_body, true)
             );
         }
     }
