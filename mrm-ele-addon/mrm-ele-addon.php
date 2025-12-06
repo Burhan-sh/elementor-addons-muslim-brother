@@ -3,7 +3,7 @@
  * Plugin Name: MRM Ele Addon
  * Description: Custom Elementor addon plugin with drag and drop widgets
  * Plugin URI: 
- * Version: 1.2.0
+ * Version: 2.2.0
  * Author: Burhan Hasanfatta
  * Author URI: 
  * Text Domain: mrm-ele-addon
