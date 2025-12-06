@@ -114,23 +114,33 @@ class MRM_CF7_Popup_AJAX_Handler {
         $credentials = null;
         
         if (!empty($service_account_json)) {
-            // Use JSON content
+            // Use JSON content (pasted directly)
             $credentials = json_decode($service_account_json, true);
-        } elseif (!empty($service_account_path) && file_exists($service_account_path)) {
-            // Use file path
-            $json_content = file_get_contents($service_account_path);
-            $credentials = json_decode($json_content, true);
+        } elseif (!empty($service_account_path)) {
+            // Use uploaded file via Service Account Manager
+            $widget_id = sanitize_text_field($_POST['widget_id'] ?? '');
+            $file_id = absint($_POST['file_id'] ?? 0);
+            
+            if (class_exists('MRM_Service_Account_Manager')) {
+                $credentials = MRM_Service_Account_Manager::get_credentials($file_id, $widget_id);
+            } else {
+                // Fallback to direct file access
+                if (file_exists($service_account_path)) {
+                    $json_content = file_get_contents($service_account_path);
+                    $credentials = json_decode($json_content, true);
+                }
+            }
         } else {
             return array(
                 'success' => false,
-                'message' => 'Service Account credentials not found'
+                'message' => 'Service Account credentials not found. Please upload a JSON key file or paste the JSON content.'
             );
         }
 
         if (!$credentials || !isset($credentials['private_key']) || !isset($credentials['client_email'])) {
             return array(
                 'success' => false,
-                'message' => 'Invalid Service Account credentials format'
+                'message' => 'Invalid Service Account credentials format. Please ensure the JSON file contains valid service account data.'
             );
         }
 

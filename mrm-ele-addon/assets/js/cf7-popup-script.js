@@ -271,6 +271,11 @@
             } else if (authMethod === 'service_account') {
                 if (this.googleSheetsData.serviceAccountMethod === 'json_content') {
                     ajaxData.service_account_json = this.googleSheetsData.serviceAccountJson || '';
+                } else if (this.googleSheetsData.serviceAccountMethod === 'upload_file') {
+                    // Uploaded file - pass file ID and widget ID
+                    ajaxData.service_account_path = 'uploaded'; // Flag to use uploaded file
+                    ajaxData.file_id = this.googleSheetsData.fileId || '';
+                    ajaxData.widget_id = this.googleSheetsData.widgetId || '';
                 } else {
                     ajaxData.service_account_path = this.googleSheetsData.serviceAccountPath || '';
                 }

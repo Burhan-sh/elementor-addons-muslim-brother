@@ -423,13 +423,45 @@ class CF7_Popup_Widget extends Widget_Base {
                 'label' => esc_html__('Service Account Input', 'mrm-ele-addon'),
                 'type' => Controls_Manager::SELECT,
                 'options' => [
+                    'upload_file' => esc_html__('Upload JSON File (Recommended)', 'mrm-ele-addon'),
                     'json_content' => esc_html__('Paste JSON Content', 'mrm-ele-addon'),
-                    'file_path' => esc_html__('File Path', 'mrm-ele-addon'),
                 ],
-                'default' => 'json_content',
+                'default' => 'upload_file',
                 'condition' => [
                     'enable_google_sheets' => 'yes',
                     'google_auth_method' => 'service_account',
+                ],
+            ]
+        );
+
+        $this->add_control(
+            'service_account_file',
+            [
+                'label' => esc_html__('Upload Service Account JSON', 'mrm-ele-addon'),
+                'type' => Controls_Manager::MEDIA,
+                'media_type' => 'application/json',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'service_account',
+                    'service_account_input_method' => 'upload_file',
+                ],
+                'description' => esc_html__('Upload your Service Account JSON key file. It will be stored securely.', 'mrm-ele-addon'),
+            ]
+        );
+
+        $this->add_control(
+            'service_account_file_status',
+            [
+                'type' => Controls_Manager::RAW_HTML,
+                'raw' => '<div id="mrm-sa-file-status" style="padding:10px;background:#d4edda;border-left:3px solid #28a745;margin:10px 0;display:none;">'
+                    . '<strong>✅ File Uploaded Successfully!</strong><br>'
+                    . '<span id="mrm-sa-filename"></span><br>'
+                    . '<small>Stored securely. You can change it anytime.</small>'
+                    . '</div>',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'service_account',
+                    'service_account_input_method' => 'upload_file',
                 ],
             ]
         );
@@ -451,17 +483,19 @@ class CF7_Popup_Widget extends Widget_Base {
         );
 
         $this->add_control(
-            'service_account_file_path',
+            'service_account_management',
             [
-                'label' => esc_html__('Service Account File Path', 'mrm-ele-addon'),
-                'type' => Controls_Manager::TEXT,
-                'placeholder' => '/wp-content/uploads/private/service-account.json',
+                'type' => Controls_Manager::RAW_HTML,
+                'raw' => '<div style="padding:10px;background:#fff3cd;border-left:3px solid #ffc107;margin:10px 0;">'
+                    . '<strong>🔄 Change Service Account:</strong><br>'
+                    . 'Upload a new JSON file to replace the existing one. Old credentials will be removed automatically.<br><br>'
+                    . '<button type="button" class="elementor-button elementor-button-default" onclick="jQuery(\'#service_account_file\').click()">Upload New File</button>'
+                    . '</div>',
                 'condition' => [
                     'enable_google_sheets' => 'yes',
                     'google_auth_method' => 'service_account',
-                    'service_account_input_method' => 'file_path',
+                    'service_account_input_method' => 'upload_file',
                 ],
-                'description' => esc_html__('Absolute path to Service Account JSON file', 'mrm-ele-addon'),
             ]
         );
 
@@ -470,12 +504,14 @@ class CF7_Popup_Widget extends Widget_Base {
             [
                 'type' => Controls_Manager::RAW_HTML,
                 'raw' => '<div style="padding:10px;background:#d1ecf1;border-left:3px solid #0c5460;margin:10px 0;">'
-                    . '<strong>📖 Setup Guide:</strong><br>'
+                    . '<strong>📖 Setup Steps:</strong><br>'
                     . '1. Create Service Account in Google Cloud Console<br>'
                     . '2. Download JSON key file<br>'
-                    . '3. Share your Google Sheet with Service Account email<br>'
-                    . '4. Give it Editor permission<br><br>'
-                    . '<a href="/wp-content/plugins/mrm-ele-addon/GOOGLE_SHEETS_401_ERROR_SOLUTION_HINDI.md" target="_blank">View Detailed Guide</a>'
+                    . '3. Upload file here (stored securely)<br>'
+                    . '4. Share your Google Sheet with Service Account email<br>'
+                    . '5. Give Editor permission<br><br>'
+                    . '<strong>Service Account Email:</strong><br>'
+                    . 'Open the JSON file to find "client_email" - share your sheet with this email.'
                     . '</div>',
                 'condition' => [
                     'enable_google_sheets' => 'yes',
@@ -1110,13 +1146,19 @@ class CF7_Popup_Widget extends Widget_Base {
             if ($auth_method === 'api_key') {
                 $google_sheets_data['apiKey'] = $settings['google_api_key'] ?? '';
             } elseif ($auth_method === 'service_account') {
-                $input_method = $settings['service_account_input_method'] ?? 'json_content';
+                $input_method = $settings['service_account_input_method'] ?? 'upload_file';
                 $google_sheets_data['serviceAccountMethod'] = $input_method;
                 
                 if ($input_method === 'json_content') {
                     $google_sheets_data['serviceAccountJson'] = $settings['service_account_json'] ?? '';
-                } else {
-                    $google_sheets_data['serviceAccountPath'] = $settings['service_account_file_path'] ?? '';
+                } elseif ($input_method === 'upload_file') {
+                    // Get uploaded file info
+                    $file_data = $settings['service_account_file'] ?? [];
+                    if (!empty($file_data['id'])) {
+                        // Store widget ID for file retrieval
+                        $google_sheets_data['widgetId'] = $this->get_id();
+                        $google_sheets_data['fileId'] = $file_data['id'];
+                    }
                 }
             } elseif ($auth_method === 'webhook') {
                 $google_sheets_data['webhookUrl'] = $settings['google_webhook_url'] ?? '';
