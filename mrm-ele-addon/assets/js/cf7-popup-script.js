@@ -238,6 +238,9 @@
         }
 
         sendToGoogleSheets(formData) {
+            // Debug logging
+            console.log('📊 Google Sheets Data:', this.googleSheetsData);
+            
             // Prepare data for Google Sheets
             const fieldMapping = JSON.parse(this.googleSheetsData.fieldMapping || '{}');
             const mappedData = {};
@@ -276,6 +279,12 @@
                     ajaxData.service_account_path = 'uploaded'; // Flag to use uploaded file
                     ajaxData.file_id = this.googleSheetsData.fileId || '';
                     ajaxData.widget_id = this.googleSheetsData.widgetId || '';
+                    
+                    // Debug logging
+                    console.log('📤 Sending uploaded file data:', {
+                        fileId: ajaxData.file_id,
+                        widgetId: ajaxData.widget_id
+                    });
                 } else {
                     ajaxData.service_account_path = this.googleSheetsData.serviceAccountPath || '';
                 }

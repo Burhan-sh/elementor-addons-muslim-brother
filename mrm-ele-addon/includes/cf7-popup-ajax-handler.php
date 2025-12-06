@@ -37,6 +37,15 @@ class MRM_CF7_Popup_AJAX_Handler {
         $sheet_name = sanitize_text_field($_POST['sheet_name'] ?? 'Sheet1');
         $widget_id = sanitize_text_field($_POST['widget_id'] ?? '');
         $data = $_POST['data'] ?? array();
+        
+        // Debug logging
+        error_log('MRM CF7 Popup - Google Sheets Request:');
+        error_log('Auth Method: ' . $auth_method);
+        error_log('Sheet ID: ' . $sheet_id);
+        error_log('Widget ID: ' . $widget_id);
+        if ($auth_method === 'service_account') {
+            error_log('File ID: ' . absint($_POST['file_id'] ?? 0));
+        }
 
         // Validate required fields
         if (empty($sheet_id)) {
@@ -117,14 +126,35 @@ class MRM_CF7_Popup_AJAX_Handler {
             // Use JSON content (pasted directly)
             $credentials = json_decode($service_account_json, true);
         } elseif (!empty($service_account_path)) {
-            // Use uploaded file via Service Account Manager
-            $widget_id = sanitize_text_field($_POST['widget_id'] ?? '');
-            $file_id = absint($_POST['file_id'] ?? 0);
-            
-            if (class_exists('MRM_Service_Account_Manager')) {
-                $credentials = MRM_Service_Account_Manager::get_credentials($file_id, $widget_id);
+            // Check if it's an uploaded file (service_account_path = 'uploaded')
+            if ($service_account_path === 'uploaded') {
+                // Use uploaded file via Service Account Manager
+                $widget_id = sanitize_text_field($_POST['widget_id'] ?? '');
+                $file_id = absint($_POST['file_id'] ?? 0);
+                
+                if ($file_id && $widget_id) {
+                    if (class_exists('MRM_Service_Account_Manager')) {
+                        $credentials = MRM_Service_Account_Manager::get_credentials($file_id, $widget_id);
+                    } else {
+                        // Fallback to direct media library access
+                        $file_path = get_attached_file($file_id);
+                        if ($file_path && file_exists($file_path)) {
+                            $json_content = file_get_contents($file_path);
+                            $credentials = json_decode($json_content, true);
+                        }
+                    }
+                } else {
+                    return array(
+                        'success' => false,
+                        'message' => 'Service Account file not found. Please upload a valid JSON key file.',
+                        'debug' => array(
+                            'widget_id' => $widget_id,
+                            'file_id' => $file_id
+                        )
+                    );
+                }
             } else {
-                // Fallback to direct file access
+                // Direct file path (legacy support)
                 if (file_exists($service_account_path)) {
                     $json_content = file_get_contents($service_account_path);
                     $credentials = json_decode($json_content, true);
@@ -138,9 +168,17 @@ class MRM_CF7_Popup_AJAX_Handler {
         }
 
         if (!$credentials || !isset($credentials['private_key']) || !isset($credentials['client_email'])) {
+            error_log('MRM CF7 Popup - Invalid Service Account credentials');
+            error_log('Credentials received: ' . print_r($credentials, true));
             return array(
                 'success' => false,
-                'message' => 'Invalid Service Account credentials format. Please ensure the JSON file contains valid service account data.'
+                'message' => 'Invalid Service Account credentials format. Please ensure the JSON file contains valid service account data.',
+                'debug' => array(
+                    'has_credentials' => !empty($credentials),
+                    'has_private_key' => isset($credentials['private_key']),
+                    'has_client_email' => isset($credentials['client_email']),
+                    'credential_keys' => $credentials ? array_keys($credentials) : array()
+                )
             );
         }
 

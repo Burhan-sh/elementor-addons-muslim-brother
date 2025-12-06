@@ -488,8 +488,7 @@ class CF7_Popup_Widget extends Widget_Base {
                 'type' => Controls_Manager::RAW_HTML,
                 'raw' => '<div style="padding:10px;background:#fff3cd;border-left:3px solid #ffc107;margin:10px 0;">'
                     . '<strong>🔄 Change Service Account:</strong><br>'
-                    . 'Upload a new JSON file to replace the existing one. Old credentials will be removed automatically.<br><br>'
-                    . '<button type="button" class="elementor-button elementor-button-default" onclick="jQuery(\'#service_account_file\').click()">Upload New File</button>'
+                    . 'Click the "Choose File" button above to upload a new JSON file. The new file will replace the existing credentials automatically.'
                     . '</div>',
                 'condition' => [
                     'enable_google_sheets' => 'yes',
@@ -505,13 +504,16 @@ class CF7_Popup_Widget extends Widget_Base {
                 'type' => Controls_Manager::RAW_HTML,
                 'raw' => '<div style="padding:10px;background:#d1ecf1;border-left:3px solid #0c5460;margin:10px 0;">'
                     . '<strong>📖 Setup Steps:</strong><br>'
-                    . '1. Create Service Account in Google Cloud Console<br>'
-                    . '2. Download JSON key file<br>'
-                    . '3. Upload file here (stored securely)<br>'
-                    . '4. Share your Google Sheet with Service Account email<br>'
-                    . '5. Give Editor permission<br><br>'
-                    . '<strong>Service Account Email:</strong><br>'
-                    . 'Open the JSON file to find "client_email" - share your sheet with this email.'
+                    . '1. Create Service Account in <a href="https://console.cloud.google.com/apis/credentials" target="_blank">Google Cloud Console</a><br>'
+                    . '2. Download JSON key file (e.g., my-project-abc123.json)<br>'
+                    . '3. Click "Choose File" above to upload the JSON file<br>'
+                    . '4. Find "client_email" in your JSON file (e.g., my-service@my-project.iam.gserviceaccount.com)<br>'
+                    . '5. Share your Google Sheet with that email address<br>'
+                    . '6. Give Editor permission in sharing settings<br><br>'
+                    . '<strong>⚠️ Important:</strong><br>'
+                    . '• The JSON file must be a valid Service Account key file<br>'
+                    . '• You MUST share your Google Sheet with the service account email<br>'
+                    . '• Check browser console (F12) for detailed error messages if upload fails'
                     . '</div>',
                 'condition' => [
                     'enable_google_sheets' => 'yes',

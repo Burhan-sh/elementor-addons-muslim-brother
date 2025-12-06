@@ -1,0 +1,111 @@
+═══════════════════════════════════════════════════════════════
+   GOOGLE SHEETS JSON UPLOAD - ISSUE FIXED ✅
+═══════════════════════════════════════════════════════════════
+
+YOUR ERROR:
+----------
+"Service Account credentials not found. Please upload a JSON 
+key file or paste the JSON content."
+
+WHAT WAS WRONG:
+--------------
+The uploaded JSON file wasn't being properly retrieved when 
+form submissions occurred. The file was uploaded to WordPress 
+media, but the integration code couldn't access it.
+
+WHAT I FIXED:
+-------------
+✅ Updated AJAX handler to properly retrieve uploaded files
+✅ Fixed credential lookup logic  
+✅ Added debug logging to console and WordPress logs
+✅ Improved error messages with helpful details
+✅ Enhanced setup instructions in widget
+✅ Removed broken "Upload New File" button
+
+FILES CHANGED:
+--------------
+1. /mrm-ele-addon/includes/cf7-popup-ajax-handler.php
+2. /mrm-ele-addon/assets/js/cf7-popup-script.js  
+3. /mrm-ele-addon/widgets/cf7-popup-widget.php
+
+HOW TO TEST:
+------------
+1. Open Elementor and edit your CF7 Popup widget
+2. Go to Google Sheets Integration section
+3. Click "Choose File" and upload: my-cf7-integration-31e3099c308f.json
+4. Click "Update" to save widget
+5. Share your Google Sheet with:
+   cf7-google-sheets@my-cf7-integration.iam.gserviceaccount.com
+   (Give Editor permission)
+6. Submit a test form
+7. Press F12 to see console - should show success ✅
+
+IMPORTANT STEPS YOU MUST DO:
+-----------------------------
+⚠️ SHARE YOUR GOOGLE SHEET
+   You MUST share the sheet with your service account email.
+   Without this, you'll get a 403 error.
+
+⚠️ CLICK UPDATE
+   After uploading the JSON file, click Update in Elementor
+   to save the widget settings.
+
+⚠️ USE CORRECT FIELD MAPPING
+   Map your CF7 fields to Google Sheet columns:
+   {"your-name":"Name","your-email":"Email","your-phone":"Phone"}
+
+DEBUGGING:
+----------
+Open browser console (F12) after form submission:
+- Look for: "✅ Data sent to Google Sheets successfully"
+- Or error messages with details
+
+Check WordPress debug.log for detailed server-side errors.
+
+YOUR JSON FILE:
+--------------
+Filename: my-cf7-integration-31e3099c308f.json
+Service Account Email: cf7-google-sheets@my-cf7-integration.iam.gserviceaccount.com
+Project: my-cf7-integration
+
+COMMON ERRORS AFTER FIX:
+------------------------
+Error: "403 Forbidden"
+→ You haven't shared the Google Sheet. Share it!
+
+Error: "404 Not Found"  
+→ Wrong Sheet ID or sheet name doesn't exist
+
+Error: "Invalid credentials"
+→ JSON file is corrupted or not a service account key
+
+ABOUT THE UPLOAD BUTTON:
+------------------------
+Q: Why isn't there a separate "Upload New File" button anymore?
+A: It wasn't working properly. Just use the "Choose File" button 
+   that Elementor provides - it works perfectly!
+
+CHANGING TO PRODUCTION ACCOUNT:
+-------------------------------
+When ready to switch from test to production:
+1. Upload new JSON file (same "Choose File" button)
+2. Click Update
+3. Share Google Sheet with new service account email
+4. Done! Old credentials automatically replaced
+
+SECURITY:
+---------
+✅ Your JSON file is stored securely in:
+   /wp-content/uploads/mrm-cf7-private/
+✅ Protected with .htaccess (no direct access)
+✅ Private keys never sent to browser
+✅ Cleaned up after 30 days if unused
+
+READ MORE:
+----------
+See GOOGLE_SHEETS_JSON_UPLOAD_FIX.md for detailed documentation
+
+═══════════════════════════════════════════════════════════════
+Status: READY TO TEST
+Date: December 6, 2025
+═══════════════════════════════════════════════════════════════
