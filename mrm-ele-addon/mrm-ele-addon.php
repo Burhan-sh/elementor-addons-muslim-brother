@@ -99,6 +99,11 @@ final class MRM_Ele_Addon {
      * Load includes
      */
     public function load_includes() {
+        // Load Service Account Manager
+        if (file_exists(__DIR__ . '/includes/service-account-manager.php')) {
+            require_once(__DIR__ . '/includes/service-account-manager.php');
+        }
+
         // Load CF7 Popup AJAX Handler
         if (file_exists(__DIR__ . '/includes/cf7-popup-ajax-handler.php')) {
             require_once(__DIR__ . '/includes/cf7-popup-ajax-handler.php');

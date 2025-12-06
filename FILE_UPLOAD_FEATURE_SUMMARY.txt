@@ -1,0 +1,469 @@
+╔═══════════════════════════════════════════════════════════════════════════════╗
+║                                                                               ║
+║          🎉 FILE UPLOAD FEATURE - IMPLEMENTATION COMPLETE                    ║
+║                                                                               ║
+║                    Service Account JSON Upload in Elementor                   ║
+║                                                                               ║
+╚═══════════════════════════════════════════════════════════════════════════════╝
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅ आपकी Request Complete हो गई है!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+मैंने exactly वही implement किया है जो आपने चाहा था:
+
+✅ Direct file upload in Elementor widget
+✅ Automatic secure folder creation (/wp-content/uploads/mrm-cf7-private/)
+✅ .htaccess protection (no direct access)
+✅ Easy to change anytime from Elementor
+✅ No manual file-level code changes needed
+✅ Future-proof - console account आसानी से change कर सकते हैं
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📝 क्या Changes किए गए?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. FILES CREATED/MODIFIED:
+   ────────────────────────────────────────────────────────────────────────
+
+   ✨ NEW FILE: includes/service-account-manager.php
+      → Handles secure file storage
+      → Automatic folder creation with .htaccess
+      → Encryption support
+      → File validation
+      → Cleanup old files (auto-scheduled)
+
+   ✅ UPDATED: widgets/cf7-popup-widget.php
+      → Added file upload control (Controls_Manager::MEDIA)
+      → Changed default from 'json_content' to 'upload_file'
+      → Added status display after upload
+      → Added management buttons
+      → Better help text
+
+   ✅ UPDATED: includes/cf7-popup-ajax-handler.php
+      → Integration with Service Account Manager
+      → File ID handling
+      → Better error messages
+      → Fallback support
+
+   ✅ UPDATED: assets/js/cf7-popup-script.js
+      → File ID passing in AJAX
+      → Widget ID passing
+      → Enhanced logging
+
+   ✅ UPDATED: mrm-ele-addon.php
+      → Added service-account-manager.php include
+      → Proper initialization
+
+   📄 NEW: FILE_UPLOAD_SETUP_GUIDE_HINDI.md
+      → Complete setup guide
+      → Step-by-step instructions
+      → Troubleshooting
+      → Best practices
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🎯 How It Works (Technical Flow)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. USER UPLOADS FILE IN ELEMENTOR
+   ↓
+2. WordPress stores in Media Library temporarily
+   ↓
+3. On Form Submission:
+   - MRM_Service_Account_Manager::get_credentials() called
+   - File retrieved from Media Library
+   - Validated (must be valid service account JSON)
+   - Copied to secure location: /wp-content/uploads/mrm-cf7-private/
+   - Permissions set to 0600 (owner read/write only)
+   - Path stored in database: option 'mrm_sa_path_{widget_id}'
+   ↓
+4. JWT Token Generation:
+   - Credentials read from secure location
+   - JWT token created and signed
+   - OAuth access token obtained
+   ↓
+5. Data Sent to Google Sheets
+   ↓
+6. Success! ✅
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔐 Security Features
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AUTOMATIC SECURITY (No Manual Setup Needed):
+────────────────────────────────────────────────────────────────────────
+
+1. Secure Folder Creation:
+   /wp-content/uploads/mrm-cf7-private/
+   └── Auto-created on first use
+
+2. .htaccess Protection:
+   Order Deny,Allow
+   Deny from all
+   └── Blocks direct web access
+
+3. Directory Listing Protection:
+   index.php with "Silence is golden"
+   └── Prevents folder browsing
+
+4. File Permissions:
+   chmod 0600
+   └── Only owner (web server) can read/write
+
+5. Unique Filenames:
+   service-account-{widget-id}.json
+   └── Non-guessable, widget-specific
+
+6. Validation:
+   - JSON syntax check
+   - Service account type verification
+   - Required fields validation
+   - File extension check
+
+7. Automatic Cleanup:
+   - Old unused files deleted after 30 days
+   - Scheduled via WP Cron (weekly)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📱 User Interface (Elementor Widget)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BEFORE (Old):
+────────────────────────────────────────────────────────────────────────
+Google Sheets Integration
+├─ Enable Google Sheets: Yes
+├─ Authentication Method: Service Account
+├─ Service Account Input: Paste JSON Content [default]
+│  └─ Service Account JSON: [Big textarea - paste entire JSON]
+└─ Service Account Input: File Path
+   └─ Service Account File Path: [Text input - manual path]
+
+
+AFTER (New):
+────────────────────────────────────────────────────────────────────────
+Google Sheets Integration
+├─ Enable Google Sheets: Yes
+├─ Authentication Method: Service Account
+├─ Service Account Input: Upload JSON File (Recommended) [NEW DEFAULT]
+│  ├─ Upload Service Account JSON: [📁 File Picker]
+│  ├─ ✅ File Uploaded Successfully! [Status Display]
+│  │  └─ my-cf7-integration-xxxxx.json
+│  │     Stored securely. You can change it anytime.
+│  └─ 🔄 Change Service Account: [Management UI]
+│     Upload a new JSON file to replace the existing one.
+│     [Upload New File Button]
+└─ Service Account Input: Paste JSON Content [Alternative]
+   └─ Service Account JSON: [Textarea - for those who prefer paste]
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🎨 New Features Added
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. FILE UPLOAD CONTROL
+   ───────────────────────────────────────────────────────────────────
+   Type: Controls_Manager::MEDIA
+   Media Type: application/json
+   Features:
+   - Drag & drop support
+   - File browser
+   - WordPress Media Library integration
+   - Automatic validation
+
+2. STATUS DISPLAY
+   ───────────────────────────────────────────────────────────────────
+   Shows after successful upload:
+   ✅ File Uploaded Successfully!
+   my-cf7-integration-xxxxx.json
+   Stored securely. You can change it anytime.
+
+3. MANAGEMENT UI
+   ───────────────────────────────────────────────────────────────────
+   🔄 Change Service Account:
+   Upload a new JSON file to replace the existing one.
+   Old credentials will be removed automatically.
+   [Upload New File Button]
+
+4. ENHANCED HELP TEXT
+   ───────────────────────────────────────────────────────────────────
+   📖 Setup Steps:
+   1. Create Service Account in Google Cloud Console
+   2. Download JSON key file
+   3. Upload file here (stored securely)
+   4. Share your Google Sheet with Service Account email
+   5. Give Editor permission
+
+   Service Account Email:
+   Open the JSON file to find "client_email" - share your sheet with
+   this email.
+
+5. SERVICE ACCOUNT MANAGER CLASS
+   ───────────────────────────────────────────────────────────────────
+   Methods:
+   - get_upload_dir()           → Get/create secure directory
+   - store_credentials()         → Copy file to secure location
+   - get_credentials()           → Retrieve credentials
+   - delete_credentials()        → Remove old files
+   - get_service_account_email() → Extract email from JSON
+   - cleanup_old_files()         → Auto-cleanup (scheduled)
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🚀 आप क्या कर सकते हैं (User Capabilities)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. UPLOAD FILE (First Time):
+   ───────────────────────────────────────────────────────────────────
+   Elementor > Widget > Upload JSON File > Save
+   └─ File automatically secured
+
+2. CHANGE FILE (Anytime):
+   ───────────────────────────────────────────────────────────────────
+   Elementor > Widget > Upload New JSON File > Save
+   └─ Old file automatically replaced
+
+3. NO MANUAL WORK:
+   ───────────────────────────────────────────────────────────────────
+   ❌ No FTP access needed
+   ❌ No SSH access needed
+   ❌ No server file management
+   ❌ No manual .htaccess creation
+   ❌ No chmod commands
+   ❌ No folder creation
+   └─ Everything automatic!
+
+4. FUTURE CHANGES:
+   ───────────────────────────────────────────────────────────────────
+   Need to change console account?
+   └─ Just upload new JSON file in Elementor
+   └─ Save
+   └─ Done! ✅
+
+5. MULTIPLE WIDGETS:
+   ───────────────────────────────────────────────────────────────────
+   Each widget can have different Service Account
+   └─ Files stored separately
+   └─ No conflicts
+   └─ Independent management
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📊 Method Comparison
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+┌──────────────────┬────────────┬─────────────┬─────────────┐
+│ Feature          │ File Upload│ Paste JSON  │ File Path   │
+├──────────────────┼────────────┼─────────────┼─────────────┤
+│ Ease of Use      │ ⭐⭐⭐⭐⭐    │ ⭐⭐⭐        │ ⭐⭐          │
+│ Security         │ 🔒 Auto    │ 🔒 Manual   │ 🔒 Manual   │
+│ Change Ease      │ ✅ Click    │ ✅ Paste    │ ❌ FTP      │
+│ Setup Time       │ 30 seconds │ 1 minute    │ 5 minutes   │
+│ Technical Skills │ None       │ Basic       │ Advanced    │
+│ Recommended      │ ✅ YES     │ ⚠️ OK       │ ❌ NO       │
+└──────────────────┴────────────┴─────────────┴─────────────┘
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  ✅ Complete Setup Steps (आपके लिए)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+आपने Service Account already बना लिया है, so:
+
+STEP 1: Upload File in Elementor (2 minutes)
+────────────────────────────────────────────────────────────────────────
+
+1. WordPress Admin login करें
+2. Elementor में page edit करें (जहाँ CF7 Popup widget है)
+3. CF7 Popup widget settings खोलें
+4. Google Sheets Integration section में जाएं:
+   
+   Enable Google Sheets: YES
+   ↓
+   Authentication Method: Service Account
+   ↓
+   Service Account Input: Upload JSON File (Recommended) ← Select this
+   ↓
+   [📁 Choose File] ← Click here
+   ↓
+   अपनी downloaded JSON file select करें
+   ↓
+   Upload होगा
+   ↓
+   ✅ Success message दिखेगा
+
+5. Google Sheet ID enter करें:
+   1OtbFHlzlUFGlPEFCUEKskaaVMv4ZoGrvEcLOUS4amE8
+
+6. Sheet Name: Sheet1
+
+7. Field Mapping:
+   {
+     "your-name": "Name",
+     "your-email": "Email",
+     "your-phone": "Phone",
+     "your-message": "Message"
+   }
+
+8. Update button क्लिक करें
+
+✅ Done!
+
+
+STEP 2: Test (1 minute)
+────────────────────────────────────────────────────────────────────────
+
+1. अपनी website पर जाएं
+2. Form fill करें:
+   Name: Test User
+   Email: test@example.com
+   Phone: 9876543210
+   Message: Testing file upload integration
+
+3. Submit करें
+
+4. F12 > Console:
+   ✅ Data sent to Google Sheets successfully
+
+5. Google Sheet check करें:
+   New row add हुई होगी!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  📚 Documentation
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NEW GUIDE CREATED:
+────────────────────────────────────────────────────────────────────────
+📄 FILE_UPLOAD_SETUP_GUIDE_HINDI.md
+   Location: /workspace/FILE_UPLOAD_SETUP_GUIDE_HINDI.md
+   Content:
+   - Complete setup guide
+   - Step-by-step instructions
+   - Security details
+   - Troubleshooting
+   - Best practices
+   - Visual flows
+
+EXISTING GUIDES:
+────────────────────────────────────────────────────────────────────────
+📄 START_HERE.txt - Navigation guide
+📄 FINAL_SUMMARY_FOR_USER.txt - Complete summary
+📄 QUICK_START_GUIDE_HINDI.md - All methods guide
+📄 GOOGLE_SHEETS_401_ERROR_SOLUTION_HINDI.md - Detailed solution
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🎯 Key Benefits for You
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ NO CODE CHANGES NEEDED
+   └─ Everything from Elementor UI
+
+✅ EASY TO CHANGE
+   └─ Upload new file anytime
+   └─ Old file auto-replaced
+
+✅ AUTOMATIC SECURITY
+   └─ Secure folder creation
+   └─ .htaccess protection
+   └─ File permissions
+
+✅ FUTURE-PROOF
+   └─ Console account change?
+   └─ Just upload new file!
+
+✅ NO TECHNICAL SKILLS
+   └─ No FTP
+   └─ No SSH
+   └─ No server access
+
+✅ MULTIPLE WIDGETS SUPPORT
+   └─ Each has own credentials
+   └─ No conflicts
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🔥 What's Different from Before?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BEFORE (Previous Implementation):
+────────────────────────────────────────────────────────────────────────
+❌ Manual file path entry
+❌ Need FTP/SSH access to upload file
+❌ Manual folder creation
+❌ Manual .htaccess creation
+❌ Manual chmod commands
+❌ Difficult to change
+❌ Error-prone
+
+AFTER (Current Implementation):
+────────────────────────────────────────────────────────────────────────
+✅ Direct file upload in Elementor
+✅ No server access needed
+✅ Automatic folder creation
+✅ Automatic .htaccess
+✅ Automatic permissions
+✅ One-click change
+✅ Fool-proof
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  💡 Pro Tips
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Keep Original JSON Safe:
+   └─ Store in password manager
+   └─ Or secure offline location
+   └─ Don't store on server publicly
+
+2. Test After Upload:
+   └─ Submit test form
+   └─ Check browser console
+   └─ Verify data in sheet
+
+3. Document Service Account Email:
+   └─ Write down which email is used
+   └─ For future reference
+   └─ When sharing other sheets
+
+4. Regular Backup:
+   └─ JSON files are credentials
+   └─ Keep backup safe
+   └─ Can regenerate if lost
+
+5. Monitor Usage:
+   └─ Check Google Cloud Console
+   └─ For API usage stats
+   └─ Detect issues early
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  🎉 Summary
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ IMPLEMENTED: Direct file upload in Elementor
+✅ IMPLEMENTED: Automatic secure storage
+✅ IMPLEMENTED: Easy change mechanism
+✅ IMPLEMENTED: No manual file management
+✅ IMPLEMENTED: Complete security
+✅ DOCUMENTED: Full setup guide in Hindi
+
+STATUS: 🟢 READY TO USE
+
+NEXT STEP: Upload your JSON file in Elementor and test!
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+                     👉 READ SETUP GUIDE 👈
+                   
+              FILE_UPLOAD_SETUP_GUIDE_HINDI.md
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+All changes are ready for merge! 🚀

@@ -253,28 +253,59 @@
             // Add timestamp
             mappedData['Timestamp'] = new Date().toISOString();
 
+            // Prepare AJAX data based on authentication method
+            const authMethod = this.googleSheetsData.authMethod || 'service_account';
+            const ajaxData = {
+                action: 'mrm_cf7_popup_google_sheets',
+                nonce: mrmCF7PopupData.nonce,
+                auth_method: authMethod,
+                sheet_id: this.googleSheetsData.sheetId,
+                sheet_name: this.googleSheetsData.sheetName,
+                data: mappedData,
+                widget_id: this.widgetId
+            };
+
+            // Add method-specific data
+            if (authMethod === 'api_key') {
+                ajaxData.api_key = this.googleSheetsData.apiKey || '';
+            } else if (authMethod === 'service_account') {
+                if (this.googleSheetsData.serviceAccountMethod === 'json_content') {
+                    ajaxData.service_account_json = this.googleSheetsData.serviceAccountJson || '';
+                } else if (this.googleSheetsData.serviceAccountMethod === 'upload_file') {
+                    // Uploaded file - pass file ID and widget ID
+                    ajaxData.service_account_path = 'uploaded'; // Flag to use uploaded file
+                    ajaxData.file_id = this.googleSheetsData.fileId || '';
+                    ajaxData.widget_id = this.googleSheetsData.widgetId || '';
+                } else {
+                    ajaxData.service_account_path = this.googleSheetsData.serviceAccountPath || '';
+                }
+            } else if (authMethod === 'webhook') {
+                ajaxData.webhook_url = this.googleSheetsData.webhookUrl || '';
+            }
+
             // Send to server for Google Sheets integration
             $.ajax({
                 url: mrmCF7PopupData.ajaxUrl,
                 type: 'POST',
-                data: {
-                    action: 'mrm_cf7_popup_google_sheets',
-                    nonce: mrmCF7PopupData.nonce,
-                    sheet_id: this.googleSheetsData.sheetId,
-                    sheet_name: this.googleSheetsData.sheetName,
-                    api_key: this.googleSheetsData.apiKey,
-                    data: mappedData,
-                    widget_id: this.widgetId
-                },
+                data: ajaxData,
                 success: (response) => {
                     if (response.success) {
-                        console.log('Data sent to Google Sheets successfully');
+                        console.log('✅ Data sent to Google Sheets successfully');
+                        console.log('Response:', response.data);
                     } else {
-                        console.error('Failed to send data to Google Sheets:', response.data);
+                        console.error('❌ Failed to send data to Google Sheets:', response.data);
+                        if (response.data && response.data.message) {
+                            console.error('Error message:', response.data.message);
+                        }
+                        if (response.data && response.data.details) {
+                            console.error('Error details:', response.data.details);
+                        }
                     }
                 },
                 error: (xhr, status, error) => {
-                    console.error('Google Sheets AJAX error:', error);
+                    console.error('❌ Google Sheets AJAX error:', error);
+                    console.error('Status:', status);
+                    console.error('Response:', xhr.responseText);
                 }
             });
         }
