@@ -359,6 +359,7 @@
             // Debug logging
             console.log('📊 Google Sheets Data:', this.googleSheetsData);
             console.log('📁 Uploaded Files:', this.uploadedFiles);
+            console.log('📋 Form Data from CF7:', formData);
             
             // Prepare data for Google Sheets
             const fieldMapping = JSON.parse(this.googleSheetsData.fieldMapping || '{}');
@@ -368,14 +369,16 @@
             for (const [formField, sheetColumn] of Object.entries(fieldMapping)) {
                 let value = formData.find(item => item.name === formField);
                 
-                if (value) {
-                    // Check if this field is a file upload - use uploaded URL
-                    if (this.uploadedFiles && this.uploadedFiles[formField]) {
-                        mappedData[sheetColumn] = this.uploadedFiles[formField];
-                        console.log('📎 Using uploaded file URL for', formField, ':', this.uploadedFiles[formField]);
-                    } else {
-                        mappedData[sheetColumn] = value.value;
-                    }
+                // Check if this field has an uploaded file - prioritize uploaded file URL
+                if (this.uploadedFiles && this.uploadedFiles[formField]) {
+                    mappedData[sheetColumn] = this.uploadedFiles[formField];
+                    console.log('📎 Using uploaded file URL for', formField, ':', this.uploadedFiles[formField]);
+                } else if (value) {
+                    // Use regular form field value
+                    mappedData[sheetColumn] = value.value;
+                    console.log('📝 Using form value for', formField, ':', value.value);
+                } else {
+                    console.warn('⚠️ Field', formField, 'not found in form data or uploaded files');
                 }
             }
 
