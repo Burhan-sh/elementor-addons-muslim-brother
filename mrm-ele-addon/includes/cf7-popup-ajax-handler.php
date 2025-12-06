@@ -39,13 +39,25 @@ class MRM_CF7_Popup_AJAX_Handler {
         $sheet_id = sanitize_text_field($_POST['sheet_id'] ?? '');
         $sheet_name = sanitize_text_field($_POST['sheet_name'] ?? 'Sheet1');
         $widget_id = sanitize_text_field($_POST['widget_id'] ?? '');
-        $data = $_POST['data'] ?? array();
+        
+        // Decode JSON data string (sent from JS to avoid serialization issues with File objects)
+        $data_raw = wp_unslash($_POST['data'] ?? '');
+        if (is_string($data_raw)) {
+            $data = json_decode($data_raw, true);
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                // Fallback to array if not JSON
+                $data = is_array($data_raw) ? $data_raw : array();
+            }
+        } else {
+            $data = is_array($data_raw) ? $data_raw : array();
+        }
         
         // Debug logging
         error_log('MRM CF7 Popup - Google Sheets Request:');
         error_log('Auth Method: ' . $auth_method);
         error_log('Sheet ID: ' . $sheet_id);
         error_log('Widget ID: ' . $widget_id);
+        error_log('Data received: ' . print_r($data, true));
         if ($auth_method === 'service_account') {
             error_log('File ID: ' . absint($_POST['file_id'] ?? 0));
         }

@@ -374,9 +374,17 @@
                     mappedData[sheetColumn] = this.uploadedFiles[formField];
                     console.log('📎 Using uploaded file URL for', formField, ':', this.uploadedFiles[formField]);
                 } else if (value) {
-                    // Use regular form field value
-                    mappedData[sheetColumn] = value.value;
-                    console.log('📝 Using form value for', formField, ':', value.value);
+                    // IMPORTANT: Only use scalar values, not File/Blob objects
+                    // If value.value is a File object or Blob, skip it
+                    if (value.value instanceof File || value.value instanceof Blob || 
+                        (typeof value.value === 'object' && value.value !== null)) {
+                        console.warn('⚠️ Skipping non-scalar value for field:', formField);
+                        mappedData[sheetColumn] = ''; // Use empty string for file fields without URLs
+                    } else {
+                        // Use regular form field value (ensure it's a string)
+                        mappedData[sheetColumn] = String(value.value || '');
+                        console.log('📝 Using form value for', formField, ':', value.value);
+                    }
                 } else {
                     console.warn('⚠️ Field', formField, 'not found in form data or uploaded files');
                 }
@@ -422,10 +430,31 @@
             }
 
             // Send to server for Google Sheets integration
+            // Convert data to plain object to avoid jQuery serialization issues
+            const plainAjaxData = {
+                action: String(ajaxData.action),
+                nonce: String(ajaxData.nonce),
+                auth_method: String(ajaxData.auth_method),
+                sheet_id: String(ajaxData.sheet_id),
+                sheet_name: String(ajaxData.sheet_name),
+                data: JSON.stringify(ajaxData.data), // Serialize data as JSON string
+                widget_id: String(ajaxData.widget_id)
+            };
+
+            // Add method-specific data as plain strings
+            if (ajaxData.api_key) plainAjaxData.api_key = String(ajaxData.api_key);
+            if (ajaxData.service_account_json) plainAjaxData.service_account_json = String(ajaxData.service_account_json);
+            if (ajaxData.service_account_path) plainAjaxData.service_account_path = String(ajaxData.service_account_path);
+            if (ajaxData.file_id) plainAjaxData.file_id = String(ajaxData.file_id);
+            if (ajaxData.webhook_url) plainAjaxData.webhook_url = String(ajaxData.webhook_url);
+
+            console.log('📤 Sending to Google Sheets:', plainAjaxData);
+
             $.ajax({
                 url: mrmCF7PopupData.ajaxUrl,
                 type: 'POST',
-                data: ajaxData,
+                data: plainAjaxData,
+                dataType: 'json',
                 success: (response) => {
                     if (response.success) {
                         console.log('✅ Data sent to Google Sheets successfully');
