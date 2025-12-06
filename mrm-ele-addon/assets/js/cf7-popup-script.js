@@ -261,7 +261,11 @@
                     // Store uploaded file URLs
                     results.forEach(result => {
                         if (result.success && result.data) {
-                            this.uploadedFiles[result.data.field_name] = result.data.url;
+                            // Normalize field name - remove brackets [] if present
+                            // CF7 file fields use name like "file-225[]" but form data uses "file-225"
+                            const normalizedFieldName = result.data.field_name.replace(/\[\]$/, '');
+                            this.uploadedFiles[normalizedFieldName] = result.data.url;
+                            console.log('💾 Stored file URL for field:', normalizedFieldName, '→', result.data.url);
                         }
                     });
 
@@ -370,9 +374,14 @@
                 let value = formData.find(item => item.name === formField);
                 
                 // Check if this field has an uploaded file - prioritize uploaded file URL
-                if (this.uploadedFiles && this.uploadedFiles[formField]) {
-                    mappedData[sheetColumn] = this.uploadedFiles[formField];
-                    console.log('📎 Using uploaded file URL for', formField, ':', this.uploadedFiles[formField]);
+                // Try both with and without brackets (e.g., "file-225" and "file-225[]")
+                const normalizedFormField = formField.replace(/\[\]$/, '');
+                const formFieldWithBrackets = normalizedFormField + '[]';
+                
+                if (this.uploadedFiles && (this.uploadedFiles[normalizedFormField] || this.uploadedFiles[formFieldWithBrackets])) {
+                    const fileUrl = this.uploadedFiles[normalizedFormField] || this.uploadedFiles[formFieldWithBrackets];
+                    mappedData[sheetColumn] = fileUrl;
+                    console.log('📎 Using uploaded file URL for', formField, ':', fileUrl);
                 } else if (value) {
                     // IMPORTANT: Only use scalar values, not File/Blob objects
                     // If value.value is a File object or Blob, skip it
