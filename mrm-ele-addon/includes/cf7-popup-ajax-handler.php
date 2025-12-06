@@ -19,6 +19,9 @@ class MRM_CF7_Popup_AJAX_Handler {
         
         add_action('wp_ajax_mrm_cf7_popup_send_cc', array($this, 'handle_cc_email'));
         add_action('wp_ajax_nopriv_mrm_cf7_popup_send_cc', array($this, 'handle_cc_email'));
+        
+        add_action('wp_ajax_mrm_cf7_popup_upload_file', array($this, 'handle_file_upload'));
+        add_action('wp_ajax_nopriv_mrm_cf7_popup_upload_file', array($this, 'handle_file_upload'));
     }
 
     /**
@@ -596,6 +599,130 @@ class MRM_CF7_Popup_AJAX_Handler {
         }
 
         return true;
+    }
+
+    /**
+     * Handle file upload to WordPress media library
+     */
+    public function handle_file_upload() {
+        // Verify nonce
+        if (!check_ajax_referer('mrm_cf7_popup_nonce', 'nonce', false)) {
+            wp_send_json_error(array('message' => 'Security check failed'));
+            return;
+        }
+
+        // Check if file was uploaded
+        if (empty($_FILES) || !isset($_FILES['file'])) {
+            wp_send_json_error(array('message' => 'No file uploaded'));
+            return;
+        }
+
+        $file = $_FILES['file'];
+
+        // Validate file
+        $allowed_types = array(
+            'image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp',
+            'application/pdf', 'application/msword', 
+            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg',
+            'video/mp4', 'video/mpeg', 'video/quicktime', 'video/x-msvideo'
+        );
+
+        $file_type = $file['type'];
+        
+        // Get file extension
+        $file_name = sanitize_file_name($file['name']);
+        $file_ext = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+
+        // Additional validation for mime type
+        if (!in_array($file_type, $allowed_types)) {
+            // Try to validate by extension as fallback
+            $valid_extensions = array('jpg', 'jpeg', 'png', 'gif', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'mp3', 'wav', 'ogg', 'mp4', 'mpeg', 'mov', 'avi');
+            
+            if (!in_array($file_ext, $valid_extensions)) {
+                wp_send_json_error(array(
+                    'message' => 'File type not allowed. Allowed types: images, documents (PDF, Word, Excel), audio, and video files.',
+                    'file_type' => $file_type,
+                    'file_ext' => $file_ext
+                ));
+                return;
+            }
+        }
+
+        // Check file size (max 10MB)
+        $max_size = 10 * 1024 * 1024; // 10MB in bytes
+        if ($file['size'] > $max_size) {
+            wp_send_json_error(array('message' => 'File size exceeds 10MB limit'));
+            return;
+        }
+
+        // Check for upload errors
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            wp_send_json_error(array('message' => 'File upload error: ' . $file['error']));
+            return;
+        }
+
+        // Include WordPress file handling functions
+        require_once(ABSPATH . 'wp-admin/includes/file.php');
+        require_once(ABSPATH . 'wp-admin/includes/image.php');
+        require_once(ABSPATH . 'wp-admin/includes/media.php');
+
+        // Upload file to WordPress media library
+        $upload_overrides = array(
+            'test_form' => false,
+            'test_type' => true,
+            'test_size' => true,
+        );
+
+        // Move uploaded file
+        $uploaded_file = wp_handle_upload($file, $upload_overrides);
+
+        if (isset($uploaded_file['error'])) {
+            wp_send_json_error(array(
+                'message' => 'Upload failed: ' . $uploaded_file['error']
+            ));
+            return;
+        }
+
+        // File was successfully uploaded
+        $file_url = $uploaded_file['url'];
+        $file_path = $uploaded_file['file'];
+        $file_type = $uploaded_file['type'];
+
+        // Get field name from request
+        $field_name = sanitize_text_field($_POST['field_name'] ?? 'file');
+
+        // Insert file as attachment
+        $attachment = array(
+            'guid' => $file_url,
+            'post_mime_type' => $file_type,
+            'post_title' => preg_replace('/\.[^.]+$/', '', basename($file_path)),
+            'post_content' => '',
+            'post_status' => 'inherit'
+        );
+
+        $attach_id = wp_insert_attachment($attachment, $file_path);
+
+        // Generate attachment metadata
+        $attach_data = wp_generate_attachment_metadata($attach_id, $file_path);
+        wp_update_attachment_metadata($attach_id, $attach_data);
+
+        // Log success
+        error_log('MRM CF7 Popup - File uploaded successfully: ' . $file_url);
+        error_log('Field name: ' . $field_name);
+        error_log('Attachment ID: ' . $attach_id);
+
+        // Return success with file URL
+        wp_send_json_success(array(
+            'message' => 'File uploaded successfully',
+            'url' => $file_url,
+            'attachment_id' => $attach_id,
+            'field_name' => $field_name,
+            'file_name' => basename($file_path),
+            'file_type' => $file_type
+        ));
     }
 }
 

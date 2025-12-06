@@ -180,9 +180,20 @@
                 return;
             }
 
-            // Handle form submission
+            // Store uploaded file URLs
+            this.uploadedFiles = {};
+
+            // Handle form submission - intercept to upload files first
             $cf7Form.on('submit', (e) => {
-                this.$form.addClass('submitting');
+                const hasFiles = this.hasFileUploads($cf7Form);
+                
+                if (hasFiles) {
+                    e.preventDefault();
+                    this.$form.addClass('submitting');
+                    this.uploadFilesBeforeSubmit($cf7Form);
+                } else {
+                    this.$form.addClass('submitting');
+                }
             });
 
             // Listen for CF7 events
@@ -210,6 +221,113 @@
                     this.$form.removeClass('submitting');
                 }
             }, false);
+        }
+
+        hasFileUploads($form) {
+            return $form.find('input[type="file"]').length > 0 && 
+                   $form.find('input[type="file"]').filter(function() {
+                       return this.files && this.files.length > 0;
+                   }).length > 0;
+        }
+
+        uploadFilesBeforeSubmit($form) {
+            const $fileInputs = $form.find('input[type="file"]');
+            const uploadPromises = [];
+
+            console.log('📤 Starting file uploads...');
+
+            $fileInputs.each((index, input) => {
+                const $input = $(input);
+                const files = input.files;
+
+                if (files && files.length > 0) {
+                    const fieldName = $input.attr('name');
+                    
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        console.log('📁 Uploading file:', file.name, 'for field:', fieldName);
+                        
+                        const promise = this.uploadSingleFile(file, fieldName);
+                        uploadPromises.push(promise);
+                    }
+                }
+            });
+
+            // Wait for all uploads to complete
+            Promise.all(uploadPromises)
+                .then((results) => {
+                    console.log('✅ All files uploaded successfully:', results);
+                    
+                    // Store uploaded file URLs
+                    results.forEach(result => {
+                        if (result.success && result.data) {
+                            this.uploadedFiles[result.data.field_name] = result.data.url;
+                        }
+                    });
+
+                    // Now submit the form normally (CF7 will handle it)
+                    this.submitFormAfterUpload($form);
+                })
+                .catch((error) => {
+                    console.error('❌ File upload failed:', error);
+                    this.$form.removeClass('submitting');
+                    
+                    // Show error message
+                    const $response = $form.find('.wpcf7-response-output');
+                    $response.addClass('wpcf7-validation-errors').text('File upload failed. Please try again.');
+                });
+        }
+
+        uploadSingleFile(file, fieldName) {
+            return new Promise((resolve, reject) => {
+                const formData = new FormData();
+                formData.append('action', 'mrm_cf7_popup_upload_file');
+                formData.append('nonce', mrmCF7PopupData.nonce);
+                formData.append('file', file);
+                formData.append('field_name', fieldName);
+
+                $.ajax({
+                    url: mrmCF7PopupData.ajaxUrl,
+                    type: 'POST',
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: (response) => {
+                        if (response.success) {
+                            console.log('✅ File uploaded:', response.data.file_name, '→', response.data.url);
+                            resolve(response);
+                        } else {
+                            console.error('❌ Upload failed:', response.data.message);
+                            reject(response.data.message);
+                        }
+                    },
+                    error: (xhr, status, error) => {
+                        console.error('❌ Upload AJAX error:', error);
+                        reject(error);
+                    }
+                });
+            });
+        }
+
+        submitFormAfterUpload($form) {
+            console.log('📨 Submitting form after file uploads...');
+            
+            // Remove the submit event handler temporarily to avoid loop
+            $form.off('submit');
+            
+            // Trigger CF7 submission
+            const submitButton = $form.find('input[type="submit"]')[0];
+            if (submitButton) {
+                submitButton.click();
+            } else {
+                // Fallback: trigger form submit
+                $form[0].submit();
+            }
+            
+            // Re-attach the submit handler after a short delay
+            setTimeout(() => {
+                this.initCF7Integration();
+            }, 100);
         }
 
         handleFormSuccess(event) {
@@ -240,6 +358,7 @@
         sendToGoogleSheets(formData) {
             // Debug logging
             console.log('📊 Google Sheets Data:', this.googleSheetsData);
+            console.log('📁 Uploaded Files:', this.uploadedFiles);
             
             // Prepare data for Google Sheets
             const fieldMapping = JSON.parse(this.googleSheetsData.fieldMapping || '{}');
@@ -247,9 +366,16 @@
 
             // Map form fields to sheet columns
             for (const [formField, sheetColumn] of Object.entries(fieldMapping)) {
-                const value = formData.find(item => item.name === formField);
+                let value = formData.find(item => item.name === formField);
+                
                 if (value) {
-                    mappedData[sheetColumn] = value.value;
+                    // Check if this field is a file upload - use uploaded URL
+                    if (this.uploadedFiles && this.uploadedFiles[formField]) {
+                        mappedData[sheetColumn] = this.uploadedFiles[formField];
+                        console.log('📎 Using uploaded file URL for', formField, ':', this.uploadedFiles[formField]);
+                    } else {
+                        mappedData[sheetColumn] = value.value;
+                    }
                 }
             }
 
