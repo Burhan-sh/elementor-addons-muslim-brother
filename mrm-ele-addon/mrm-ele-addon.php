@@ -84,9 +84,30 @@ final class MRM_Ele_Addon {
             return;
         }
 
+        // Load includes
+        $this->load_includes();
+
         // Add Plugin actions
         add_action('elementor/widgets/register', [$this, 'register_widgets']);
         add_action('elementor/elements/categories_registered', [$this, 'add_elementor_widget_categories']);
+        add_action('elementor/frontend/after_register_scripts', [$this, 'register_frontend_scripts']);
+        add_action('elementor/frontend/after_register_styles', [$this, 'register_frontend_styles']);
+        add_action('wp_enqueue_scripts', [$this, 'enqueue_frontend_scripts']);
+    }
+
+    /**
+     * Load includes
+     */
+    public function load_includes() {
+        // Load CF7 Popup AJAX Handler
+        if (file_exists(__DIR__ . '/includes/cf7-popup-ajax-handler.php')) {
+            require_once(__DIR__ . '/includes/cf7-popup-ajax-handler.php');
+        }
+
+        // Load CF7 Popup Security
+        if (file_exists(__DIR__ . '/includes/cf7-popup-security.php')) {
+            require_once(__DIR__ . '/includes/cf7-popup-security.php');
+        }
     }
 
     /**
@@ -165,6 +186,7 @@ final class MRM_Ele_Addon {
         require_once(__DIR__ . '/widgets/get-in-touch-widget.php');
         require_once(__DIR__ . '/widgets/contact-form-widget.php');
         require_once(__DIR__ . '/widgets/footer-widget.php');
+        require_once(__DIR__ . '/widgets/cf7-popup-widget.php');
 
         // Register widgets
         $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Demo_Widget());
@@ -179,6 +201,7 @@ final class MRM_Ele_Addon {
         $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Get_In_Touch_Widget());
         $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Contact_Form_Widget());
         $widgets_manager->register(new \MRM_Ele_Addon\Widgets\Footer_Widget());
+        $widgets_manager->register(new \MRM_Ele_Addon\Widgets\CF7_Popup_Widget());
     }
 
     /**
@@ -192,6 +215,47 @@ final class MRM_Ele_Addon {
                 'icon' => 'fa fa-plug',
             ]
         );
+    }
+
+    /**
+     * Register frontend scripts
+     */
+    public function register_frontend_scripts() {
+        wp_register_script(
+            'mrm-cf7-popup-script',
+            plugins_url('/assets/js/cf7-popup-script.js', __FILE__),
+            ['jquery'],
+            self::VERSION,
+            true
+        );
+    }
+
+    /**
+     * Register frontend styles
+     */
+    public function register_frontend_styles() {
+        wp_register_style(
+            'mrm-cf7-popup-style',
+            plugins_url('/assets/css/cf7-popup-style.css', __FILE__),
+            [],
+            self::VERSION
+        );
+    }
+
+    /**
+     * Enqueue frontend scripts
+     */
+    public function enqueue_frontend_scripts() {
+        // Enqueue CF7 Popup assets
+        wp_enqueue_style('mrm-cf7-popup-style');
+        wp_enqueue_script('mrm-cf7-popup-script');
+
+        // Localize script with AJAX data
+        wp_localize_script('mrm-cf7-popup-script', 'mrmCF7PopupData', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('mrm_cf7_popup_nonce'),
+            'siteUrl' => site_url(),
+        ]);
     }
 }
 
