@@ -27,7 +27,7 @@ class CF7_Popup_Widget extends Widget_Base {
     }
 
     public function get_icon() {
-        return 'eicon-popup';
+        return 'eicon-mail';
     }
 
     public function get_categories() {

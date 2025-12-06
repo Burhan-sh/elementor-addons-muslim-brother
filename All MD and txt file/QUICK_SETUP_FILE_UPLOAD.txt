@@ -1,0 +1,181 @@
+═══════════════════════════════════════════════════════════════
+    MRM CF7 POPUP - FILE UPLOAD QUICK SETUP GUIDE
+═══════════════════════════════════════════════════════════════
+
+📋 QUICK STEPS TO ENABLE FILE UPLOAD WITH GOOGLE SHEETS
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1: CREATE YOUR CONTACT FORM 7
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Go to: Contact > Contact Forms > Add New
+
+Add this code:
+
+    <label> Your name </label>
+    [text* your-name autocomplete:name]
+
+    <label> Your email </label>
+    [email* your-email autocomplete:email]
+
+    <label> Phone </label>
+    [tel tel-835 placeholder "Number"]
+
+    <label> Adhar Card </label>
+    [file file-225 filetypes:audio/*|video/*|image/* limit:10mb]
+
+    <label> Your message (optional) </label>
+    [textarea your-message]
+
+    [submit "Submit"]
+
+Save the form and note the Form ID.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2: CONFIGURE MRM CF7 POPUP WIDGET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Open Elementor editor
+2. Add "MRM CF7 Popup" widget
+3. Select your Contact Form
+4. Enable Google Sheets
+5. Choose Authentication Method: Service Account
+6. Upload your Service Account JSON file
+7. Enter Google Sheet ID
+8. Enter Sheet Name (e.g., Sheet1)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3: FIELD MAPPING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In the Field Mapping section, add this JSON:
+
+{
+  "your-name": "name",
+  "your-email": "email",
+  "tel-835": "phone number",
+  "file-225": "Adhar card",
+  "your-message": "Description"
+}
+
+IMPORTANT: 
+- Left side = CF7 field names (from your form)
+- Right side = Google Sheet column headers
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4: PREPARE GOOGLE SHEET
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Create headers in your Google Sheet (Row 1):
+
+┌────────────┬───────────┬──────────────┬─────────────┬─────────────┬─────────────┐
+│ name       │ email     │ phone number │ Adhar card  │ Description │ Timestamp   │
+└────────────┴───────────┴──────────────┴─────────────┴─────────────┴─────────────┘
+
+Make sure:
+- Headers match your field mapping (right side)
+- Sheet is shared with service account email
+- Service account has Editor permission
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5: TEST THE FORM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. View your page on frontend
+2. Click the popup trigger button
+3. Fill out the form
+4. Upload a file (image, PDF, etc.)
+5. Click Submit
+6. Open browser console (F12) to see upload progress
+
+Expected console messages:
+✅ "File uploaded: filename.jpg → https://..."
+✅ "Data sent to Google Sheets successfully"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+WHAT HAPPENS WHEN FILE IS UPLOADED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. User selects file and clicks Submit
+2. JavaScript intercepts the form submission
+3. File is uploaded to WordPress Media Library
+4. WordPress generates a permanent URL:
+   https://yoursite.com/wp-content/uploads/2025/11/filename.jpg
+5. Form is submitted with file URL (not file data)
+6. Data (including file URL) is sent to Google Sheets
+
+RESULT IN GOOGLE SHEET:
+┌───────┬──────────────────┬────────────┬───────────────────────────────────────┬─────────────────┐
+│ name  │ email            │ phone      │ Adhar card                            │ Description     │
+├───────┼──────────────────┼────────────┼───────────────────────────────────────┼─────────────────┤
+│ John  │ john@example.com │ 1234567890 │ https://yoursite.com/.../adhar.jpg    │ Sample message  │
+└───────┴──────────────────┴────────────┴───────────────────────────────────────┴─────────────────┘
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUPPORTED FILE TYPES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Images: JPG, JPEG, PNG, GIF, WebP
+✅ Documents: PDF, DOC, DOCX, XLS, XLSX
+✅ Audio: MP3, WAV, OGG
+✅ Video: MP4, MPEG, MOV, AVI
+
+Maximum file size: 10MB per file
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ File not uploading?
+   → Check browser console (F12) for errors
+   → Verify file type is allowed
+   → Check file size is under 10MB
+
+❌ File URL not in Google Sheets?
+   → Check field mapping matches exactly
+   → Verify file field name (e.g., "file-225")
+   → Check console for upload success message
+
+❌ Form not submitting after upload?
+   → Check JavaScript console for errors
+   → Ensure CF7 plugin is active and updated
+
+❌ "File type not allowed" error?
+   → Specify allowed types in CF7 field:
+     [file file-225 filetypes:image/*|application/pdf]
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRO TIPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+💡 Use descriptive field names in CF7
+💡 Set file size limits in CF7 form definition
+💡 Specify allowed file types to prevent unwanted uploads
+💡 Test with different file types before going live
+💡 Monitor WordPress media library storage space
+💡 Keep browser console open during testing (F12)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DEBUGGING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Enable WordPress debugging to see detailed logs:
+
+In wp-config.php, add:
+    define('WP_DEBUG', true);
+    define('WP_DEBUG_LOG', true);
+    define('WP_DEBUG_DISPLAY', false);
+
+Check logs at: /wp-content/debug.log
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NEED MORE HELP?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+📖 Read: FILE_UPLOAD_TO_GOOGLE_SHEETS_GUIDE.md
+📖 Read: FILE_UPLOAD_FEATURE_HINDI_GUIDE.md
+📖 Check WordPress debug log for detailed errors
+
+═══════════════════════════════════════════════════════════════
+Last Updated: December 2025 | Version 1.0
+═══════════════════════════════════════════════════════════════
