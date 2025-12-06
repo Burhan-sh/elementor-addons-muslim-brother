@@ -32,47 +32,176 @@ class MRM_CF7_Popup_AJAX_Handler {
         }
 
         // Sanitize and validate input
+        $auth_method = sanitize_text_field($_POST['auth_method'] ?? 'service_account');
         $sheet_id = sanitize_text_field($_POST['sheet_id'] ?? '');
         $sheet_name = sanitize_text_field($_POST['sheet_name'] ?? 'Sheet1');
-        $api_key = sanitize_text_field($_POST['api_key'] ?? '');
         $widget_id = sanitize_text_field($_POST['widget_id'] ?? '');
         $data = $_POST['data'] ?? array();
 
         // Validate required fields
-        if (empty($sheet_id) || empty($api_key)) {
-            wp_send_json_error(array('message' => 'Missing required fields'));
+        if (empty($sheet_id)) {
+            wp_send_json_error(array('message' => 'Missing Google Sheet ID'));
             return;
         }
 
         // Sanitize data
         $sanitized_data = $this->sanitize_form_data($data);
 
-        // Prepare data for Google Sheets
+        // Handle different authentication methods
         try {
-            $result = $this->send_to_google_sheets($sheet_id, $sheet_name, $api_key, $sanitized_data);
+            $result = false;
+            
+            switch ($auth_method) {
+                case 'service_account':
+                    $service_account_json = wp_unslash($_POST['service_account_json'] ?? '');
+                    $service_account_path = sanitize_text_field($_POST['service_account_path'] ?? '');
+                    $result = $this->send_to_google_sheets_service_account(
+                        $sheet_id, 
+                        $sheet_name, 
+                        $service_account_json, 
+                        $service_account_path, 
+                        $sanitized_data
+                    );
+                    break;
+                    
+                case 'api_key':
+                    $api_key = sanitize_text_field($_POST['api_key'] ?? '');
+                    $result = $this->send_to_google_sheets_api_key(
+                        $sheet_id, 
+                        $sheet_name, 
+                        $api_key, 
+                        $sanitized_data
+                    );
+                    break;
+                    
+                case 'webhook':
+                    $webhook_url = esc_url_raw($_POST['webhook_url'] ?? '');
+                    $result = $this->send_to_google_sheets_webhook(
+                        $webhook_url, 
+                        $sanitized_data
+                    );
+                    break;
+                    
+                default:
+                    wp_send_json_error(array('message' => 'Invalid authentication method'));
+                    return;
+            }
             
             if ($result['success']) {
                 wp_send_json_success(array(
                     'message' => 'Data sent to Google Sheets successfully',
-                    'data' => $result['data']
+                    'data' => $result['data'] ?? array()
                 ));
             } else {
                 wp_send_json_error(array(
-                    'message' => $result['message']
+                    'message' => $result['message'],
+                    'details' => $result['details'] ?? array()
                 ));
             }
         } catch (Exception $e) {
             error_log('MRM CF7 Popup - Google Sheets Error: ' . $e->getMessage());
             wp_send_json_error(array(
-                'message' => 'Failed to send data to Google Sheets'
+                'message' => 'Failed to send data to Google Sheets: ' . $e->getMessage()
             ));
         }
     }
 
     /**
-     * Send data to Google Sheets
+     * Send to Google Sheets using Service Account
      */
-    private function send_to_google_sheets($sheet_id, $sheet_name, $api_key, $data) {
+    private function send_to_google_sheets_service_account($sheet_id, $sheet_name, $service_account_json, $service_account_path, $data) {
+        // Get service account credentials
+        $credentials = null;
+        
+        if (!empty($service_account_json)) {
+            // Use JSON content
+            $credentials = json_decode($service_account_json, true);
+        } elseif (!empty($service_account_path) && file_exists($service_account_path)) {
+            // Use file path
+            $json_content = file_get_contents($service_account_path);
+            $credentials = json_decode($json_content, true);
+        } else {
+            return array(
+                'success' => false,
+                'message' => 'Service Account credentials not found'
+            );
+        }
+
+        if (!$credentials || !isset($credentials['private_key']) || !isset($credentials['client_email'])) {
+            return array(
+                'success' => false,
+                'message' => 'Invalid Service Account credentials format'
+            );
+        }
+
+        // Generate JWT token
+        $jwt_token = $this->create_jwt_token($credentials);
+        
+        if (!$jwt_token) {
+            return array(
+                'success' => false,
+                'message' => 'Failed to generate authentication token'
+            );
+        }
+
+        // Get OAuth access token
+        $access_token = $this->get_access_token($jwt_token);
+        
+        if (!$access_token) {
+            return array(
+                'success' => false,
+                'message' => 'Failed to obtain access token'
+            );
+        }
+
+        // Prepare values
+        $values = array();
+        $row = array();
+        
+        foreach ($data as $column => $value) {
+            $row[] = $value;
+        }
+        
+        $values[] = $row;
+        
+        // Prepare request body
+        $body = array(
+            'values' => $values,
+            'majorDimension' => 'ROWS'
+        );
+
+        // Build Google Sheets API URL
+        $url = sprintf(
+            'https://sheets.googleapis.com/v4/spreadsheets/%s/values/%s:append?valueInputOption=USER_ENTERED',
+            $sheet_id,
+            $sheet_name
+        );
+
+        // Make API request with OAuth token
+        $response = wp_remote_post($url, array(
+            'headers' => array(
+                'Content-Type' => 'application/json',
+                'Authorization' => 'Bearer ' . $access_token,
+            ),
+            'body' => wp_json_encode($body),
+            'timeout' => 30,
+            'sslverify' => true,
+        ));
+
+        return $this->handle_api_response($response);
+    }
+
+    /**
+     * Send to Google Sheets using API Key (Read Only - will fail for write operations)
+     */
+    private function send_to_google_sheets_api_key($sheet_id, $sheet_name, $api_key, $data) {
+        if (empty($api_key)) {
+            return array(
+                'success' => false,
+                'message' => 'API Key is required'
+            );
+        }
+
         // Prepare values
         $values = array();
         $row = array();
@@ -107,6 +236,103 @@ class MRM_CF7_Popup_AJAX_Handler {
             'sslverify' => true,
         ));
 
+        return $this->handle_api_response($response);
+    }
+
+    /**
+     * Send to Google Sheets using Webhook
+     */
+    private function send_to_google_sheets_webhook($webhook_url, $data) {
+        if (empty($webhook_url)) {
+            return array(
+                'success' => false,
+                'message' => 'Webhook URL is required'
+            );
+        }
+
+        // Send data to webhook
+        $response = wp_remote_post($webhook_url, array(
+            'headers' => array(
+                'Content-Type' => 'application/json',
+            ),
+            'body' => wp_json_encode($data),
+            'timeout' => 30,
+            'sslverify' => true,
+        ));
+
+        return $this->handle_api_response($response);
+    }
+
+    /**
+     * Create JWT token for Service Account
+     */
+    private function create_jwt_token($credentials) {
+        $now = time();
+        $expiration = $now + 3600; // 1 hour
+
+        $header = array(
+            'alg' => 'RS256',
+            'typ' => 'JWT'
+        );
+
+        $claim_set = array(
+            'iss' => $credentials['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/spreadsheets',
+            'aud' => 'https://oauth2.googleapis.com/token',
+            'exp' => $expiration,
+            'iat' => $now
+        );
+
+        // Encode header and claim set
+        $header_encoded = $this->base64url_encode(wp_json_encode($header));
+        $claim_set_encoded = $this->base64url_encode(wp_json_encode($claim_set));
+        
+        $signature_input = $header_encoded . '.' . $claim_set_encoded;
+
+        // Sign with private key
+        $private_key = $credentials['private_key'];
+        $signature = '';
+        
+        if (openssl_sign($signature_input, $signature, $private_key, 'SHA256')) {
+            $signature_encoded = $this->base64url_encode($signature);
+            return $signature_input . '.' . $signature_encoded;
+        }
+
+        return false;
+    }
+
+    /**
+     * Get OAuth access token using JWT
+     */
+    private function get_access_token($jwt_token) {
+        $response = wp_remote_post('https://oauth2.googleapis.com/token', array(
+            'body' => array(
+                'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+                'assertion' => $jwt_token
+            ),
+            'timeout' => 30,
+        ));
+
+        if (is_wp_error($response)) {
+            error_log('MRM CF7 - OAuth Error: ' . $response->get_error_message());
+            return false;
+        }
+
+        $body = wp_remote_retrieve_body($response);
+        $data = json_decode($body, true);
+
+        if (isset($data['access_token'])) {
+            return $data['access_token'];
+        }
+
+        error_log('MRM CF7 - OAuth Response: ' . $body);
+        return false;
+    }
+
+    /**
+     * Handle API response
+     */
+    private function handle_api_response($response) {
         if (is_wp_error($response)) {
             return array(
                 'success' => false,
@@ -117,20 +343,27 @@ class MRM_CF7_Popup_AJAX_Handler {
         $response_code = wp_remote_retrieve_response_code($response);
         $response_body = wp_remote_retrieve_body($response);
 
-        if ($response_code === 200) {
+        if ($response_code === 200 || $response_code === 201) {
             return array(
                 'success' => true,
                 'data' => json_decode($response_body, true)
             );
         } else {
             // Log detailed error for debugging
-            error_log('MRM CF7 Popup - Google Sheets API Error: ' . $response_body);
+            error_log('MRM CF7 Popup - Google Sheets API Error (' . $response_code . '): ' . $response_body);
             return array(
                 'success' => false,
                 'message' => 'API request failed with status code: ' . $response_code,
                 'details' => json_decode($response_body, true)
             );
         }
+    }
+
+    /**
+     * Base64 URL encode
+     */
+    private function base64url_encode($data) {
+        return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
     }
 
     /**

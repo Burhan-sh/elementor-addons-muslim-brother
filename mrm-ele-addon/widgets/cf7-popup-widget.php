@@ -342,11 +342,44 @@ class CF7_Popup_Widget extends Widget_Base {
         );
 
         $this->add_control(
+            'google_auth_method',
+            [
+                'label' => esc_html__('Authentication Method', 'mrm-ele-addon'),
+                'type' => Controls_Manager::SELECT,
+                'options' => [
+                    'api_key' => esc_html__('API Key (Read Only)', 'mrm-ele-addon'),
+                    'service_account' => esc_html__('Service Account (Recommended)', 'mrm-ele-addon'),
+                    'webhook' => esc_html__('Apps Script Webhook', 'mrm-ele-addon'),
+                ],
+                'default' => 'service_account',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                ],
+                'description' => esc_html__('Service Account is required for writing data to Google Sheets', 'mrm-ele-addon'),
+            ]
+        );
+
+        $this->add_control(
+            'auth_method_notice',
+            [
+                'type' => Controls_Manager::RAW_HTML,
+                'raw' => '<div style="padding:10px;background:#fff3cd;border-left:3px solid #ffc107;margin:10px 0;">'
+                    . '<strong>⚠️ Important:</strong> API Keys can only READ publicly shared data. '
+                    . 'To WRITE data to Google Sheets, you must use Service Account or Webhook method.</div>',
+                'content_classes' => 'elementor-panel-alert elementor-panel-alert-warning',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'api_key',
+                ],
+            ]
+        );
+
+        $this->add_control(
             'google_sheet_id',
             [
                 'label' => esc_html__('Google Sheet ID', 'mrm-ele-addon'),
                 'type' => Controls_Manager::TEXT,
-                'placeholder' => 'Enter your Google Sheet ID',
+                'placeholder' => '1OtbFHlzlUFGlPEFCUEKskaaVMv4ZoGrvEcLOUS4amE8',
                 'condition' => [
                     'enable_google_sheets' => 'yes',
                 ],
@@ -363,20 +396,125 @@ class CF7_Popup_Widget extends Widget_Base {
                 'default' => 'Sheet1',
                 'condition' => [
                     'enable_google_sheets' => 'yes',
+                    'google_auth_method!' => 'webhook',
                 ],
             ]
         );
 
+        // API Key Method Controls
         $this->add_control(
             'google_api_key',
             [
                 'label' => esc_html__('Google API Key', 'mrm-ele-addon'),
                 'type' => Controls_Manager::TEXT,
-                'placeholder' => 'Enter your Google API Key',
+                'placeholder' => 'AIzaSyDhJgrN1kbAZuuEMrl4u5eylFGcI_d1U80',
                 'condition' => [
                     'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'api_key',
                 ],
-                'description' => esc_html__('Your Google Sheets API key for authentication', 'mrm-ele-addon'),
+                'description' => esc_html__('Your Google Sheets API key (Read Only)', 'mrm-ele-addon'),
+            ]
+        );
+
+        // Service Account Method Controls
+        $this->add_control(
+            'service_account_input_method',
+            [
+                'label' => esc_html__('Service Account Input', 'mrm-ele-addon'),
+                'type' => Controls_Manager::SELECT,
+                'options' => [
+                    'json_content' => esc_html__('Paste JSON Content', 'mrm-ele-addon'),
+                    'file_path' => esc_html__('File Path', 'mrm-ele-addon'),
+                ],
+                'default' => 'json_content',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'service_account',
+                ],
+            ]
+        );
+
+        $this->add_control(
+            'service_account_json',
+            [
+                'label' => esc_html__('Service Account JSON', 'mrm-ele-addon'),
+                'type' => Controls_Manager::TEXTAREA,
+                'rows' => 10,
+                'placeholder' => '{"type":"service_account","project_id":"...","private_key":"..."}',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'service_account',
+                    'service_account_input_method' => 'json_content',
+                ],
+                'description' => esc_html__('Paste your Service Account JSON key file content here', 'mrm-ele-addon'),
+            ]
+        );
+
+        $this->add_control(
+            'service_account_file_path',
+            [
+                'label' => esc_html__('Service Account File Path', 'mrm-ele-addon'),
+                'type' => Controls_Manager::TEXT,
+                'placeholder' => '/wp-content/uploads/private/service-account.json',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'service_account',
+                    'service_account_input_method' => 'file_path',
+                ],
+                'description' => esc_html__('Absolute path to Service Account JSON file', 'mrm-ele-addon'),
+            ]
+        );
+
+        $this->add_control(
+            'service_account_help',
+            [
+                'type' => Controls_Manager::RAW_HTML,
+                'raw' => '<div style="padding:10px;background:#d1ecf1;border-left:3px solid #0c5460;margin:10px 0;">'
+                    . '<strong>📖 Setup Guide:</strong><br>'
+                    . '1. Create Service Account in Google Cloud Console<br>'
+                    . '2. Download JSON key file<br>'
+                    . '3. Share your Google Sheet with Service Account email<br>'
+                    . '4. Give it Editor permission<br><br>'
+                    . '<a href="/wp-content/plugins/mrm-ele-addon/GOOGLE_SHEETS_401_ERROR_SOLUTION_HINDI.md" target="_blank">View Detailed Guide</a>'
+                    . '</div>',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'service_account',
+                ],
+            ]
+        );
+
+        // Webhook Method Controls
+        $this->add_control(
+            'google_webhook_url',
+            [
+                'label' => esc_html__('Apps Script Webhook URL', 'mrm-ele-addon'),
+                'type' => Controls_Manager::TEXT,
+                'placeholder' => 'https://script.google.com/macros/s/.../exec',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'webhook',
+                ],
+                'description' => esc_html__('Your Google Apps Script Web App URL', 'mrm-ele-addon'),
+            ]
+        );
+
+        $this->add_control(
+            'webhook_help',
+            [
+                'type' => Controls_Manager::RAW_HTML,
+                'raw' => '<div style="padding:10px;background:#d1ecf1;border-left:3px solid #0c5460;margin:10px 0;">'
+                    . '<strong>Quick Setup:</strong><br>'
+                    . '1. Open your Google Sheet<br>'
+                    . '2. Extensions > Apps Script<br>'
+                    . '3. Create doPost(e) function<br>'
+                    . '4. Deploy as Web App<br>'
+                    . '5. Copy the URL here<br>'
+                    . '</div>',
+                'condition' => [
+                    'enable_google_sheets' => 'yes',
+                    'google_auth_method' => 'webhook',
+                ],
             ]
         );
 
@@ -398,7 +536,7 @@ class CF7_Popup_Widget extends Widget_Base {
             [
                 'label' => esc_html__('Field Mapping (JSON)', 'mrm-ele-addon'),
                 'type' => Controls_Manager::TEXTAREA,
-                'placeholder' => '{"your-name":"Name","your-email":"Email","your-phone":"Phone"}',
+                'placeholder' => '{"your-name":"Name","your-email":"Email","your-phone":"Phone","your-message":"Message"}',
                 'description' => esc_html__('Map CF7 fields to Google Sheet columns in JSON format', 'mrm-ele-addon'),
                 'condition' => [
                     'enable_google_sheets' => 'yes',
@@ -958,13 +1096,31 @@ class CF7_Popup_Widget extends Widget_Base {
         // Google Sheets data
         $google_sheets_data = [];
         if ($settings['enable_google_sheets'] === 'yes' && !empty($settings['google_sheet_id'])) {
+            $auth_method = $settings['google_auth_method'] ?? 'service_account';
+            
             $google_sheets_data = [
                 'enabled' => true,
+                'authMethod' => $auth_method,
                 'sheetId' => $settings['google_sheet_id'],
-                'sheetName' => $settings['google_sheet_name'],
-                'apiKey' => $settings['google_api_key'],
+                'sheetName' => $settings['google_sheet_name'] ?? 'Sheet1',
                 'fieldMapping' => !empty($settings['field_mapping']) ? $settings['field_mapping'] : '{}',
             ];
+            
+            // Add method-specific data
+            if ($auth_method === 'api_key') {
+                $google_sheets_data['apiKey'] = $settings['google_api_key'] ?? '';
+            } elseif ($auth_method === 'service_account') {
+                $input_method = $settings['service_account_input_method'] ?? 'json_content';
+                $google_sheets_data['serviceAccountMethod'] = $input_method;
+                
+                if ($input_method === 'json_content') {
+                    $google_sheets_data['serviceAccountJson'] = $settings['service_account_json'] ?? '';
+                } else {
+                    $google_sheets_data['serviceAccountPath'] = $settings['service_account_file_path'] ?? '';
+                }
+            } elseif ($auth_method === 'webhook') {
+                $google_sheets_data['webhookUrl'] = $settings['google_webhook_url'] ?? '';
+            }
         }
         
         // CC Email data
