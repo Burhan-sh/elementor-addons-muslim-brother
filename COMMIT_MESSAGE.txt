@@ -1,0 +1,56 @@
+Fix: Prevent multiple AJAX calls and ensure complete file uploads in CF7 popup
+
+PROBLEM:
+- Google Sheets receiving 4-5 duplicate entries per form submission
+- Large files (images/PDFs) not completing upload before data sent
+- File URLs in Google Sheets were empty or showing thumbnail URLs (13-15KB images)
+- Race condition: AJAX calls firing before file upload completion
+
+SOLUTION:
+- Added triple-layer duplicate prevention using flags:
+  * isSubmitting: Prevents multiple form submissions
+  * googleSheetsSent: Prevents multiple Google Sheets AJAX calls
+  * _googleSheetsSending: Prevents AJAX call while previous in progress
+
+- Sequential file upload process:
+  * Form submission prevented when files detected
+  * All files uploaded to WordPress media library first
+  * File URLs stored in uploadedFiles object
+  * Form submitted only after ALL files complete upload
+  * Google Sheets receives pre-uploaded file URLs
+
+- Enhanced file upload handling:
+  * Progress tracking (0%...100%)
+  * File size validation (max 5MB)
+  * 60-second timeout for large files
+  * Proper error handling and recovery
+  * Support for multiple simultaneous file uploads
+
+KEY IMPROVEMENTS:
+✅ Single AJAX call to Google Sheets (was 4-5, now 1)
+✅ Complete file upload before data submission
+✅ Full-size file URLs in Google Sheets (not thumbnails)
+✅ Support for files up to 5MB
+✅ Comprehensive console logging for debugging
+✅ Clean flag reset between submissions
+
+MODIFIED FILES:
+- mrm-ele-addon/assets/js/cf7-popup-script.js
+
+TESTING:
+- Text-only forms: 1 entry (verified)
+- Small images (10-50KB): 1 entry with URL (verified)
+- Large images (1-3MB): 1 entry with full URL (verified)
+- PDF files (1-3MB): 1 entry with URL (verified)
+- Multiple files: 1 entry with all URLs (verified)
+
+DOCUMENTATION:
+- FILE_UPLOAD_AJAX_FIX_SUMMARY.md - Complete technical documentation
+- QUICK_FIX_GUIDE_HINDI.md - Hindi user guide
+- FLOW_DIAGRAM.txt - Visual process flow
+- BEFORE_AFTER_FIX_COMPARISON.md - Detailed comparison
+- TESTING_CHECKLIST.md - Comprehensive test cases
+
+Issue: File upload timing and multiple AJAX calls
+Status: FIXED
+Date: December 7, 2025
