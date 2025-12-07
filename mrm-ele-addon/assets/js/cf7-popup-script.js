@@ -295,6 +295,7 @@
             console.log('📤 Starting file uploads...');
             console.log('🔄 Clearing previous uploaded files...');
             this.uploadedFiles = {}; // Clear previous uploads
+            console.log('');
 
             $fileInputs.each((index, input) => {
                 const $input = $(input);
@@ -302,14 +303,18 @@
 
                 if (files && files.length > 0) {
                     const fieldName = $input.attr('name');
+                    console.log('📂 Found file input field:');
+                    console.log('   Field name attribute:', fieldName);
+                    console.log('   Number of files:', files.length);
                     
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
-                        console.log('📁 Uploading file:', file.name, '(' + (file.size / 1024).toFixed(2) + ' KB) for field:', fieldName);
+                        console.log('   📁 File ' + (i + 1) + ':', file.name, '(' + (file.size / 1024).toFixed(2) + ' KB)');
                         
                         const promise = this.uploadSingleFile(file, fieldName);
                         uploadPromises.push(promise);
                     }
+                    console.log('');
                 }
             });
 
@@ -326,19 +331,35 @@
             Promise.all(uploadPromises)
                 .then((results) => {
                     console.log('✅ All files uploaded successfully:', results);
+                    console.log('');
+                    console.log('💾 STORING UPLOADED FILE URLS:');
+                    console.log('================================');
                     
                     // Store uploaded file URLs
                     results.forEach(result => {
                         if (result.success && result.data) {
+                            console.log('');
+                            console.log('📁 Processing uploaded file:');
+                            console.log('   Original field name:', result.data.field_name);
+                            
                             // Normalize field name - remove brackets [] if present
                             // CF7 file fields use name like "file-225[]" but form data uses "file-225"
                             const normalizedFieldName = result.data.field_name.replace(/\[\]$/, '');
+                            console.log('   Normalized field name:', normalizedFieldName);
+                            console.log('   File URL:', result.data.url);
+                            
                             this.uploadedFiles[normalizedFieldName] = result.data.url;
-                            console.log('💾 Stored file URL for field:', normalizedFieldName, '→', result.data.url);
+                            console.log('   ✅ Stored as: uploadedFiles["' + normalizedFieldName + '"]');
                         }
                     });
 
-                    console.log('📦 Final uploaded files object:', this.uploadedFiles);
+                    console.log('');
+                    console.log('================================');
+                    console.log('📦 Final uploaded files object:');
+                    console.log(this.uploadedFiles);
+                    console.log('================================');
+                    console.log('');
+                    
                     this.isFileUploading = false;
 
                     // Now submit the form normally (CF7 will handle it)
@@ -510,43 +531,78 @@
             const fieldMapping = JSON.parse(this.googleSheetsData.fieldMapping || '{}');
             const mappedData = {};
 
-            console.log('🗺️ Field Mapping:', fieldMapping);
+            console.log('🗺️ Field Mapping Configuration:', fieldMapping);
+            
+            // Show all available field names from CF7 form data
+            console.log('');
+            console.log('📋 Available CF7 Form Fields:');
+            formData.forEach(item => {
+                console.log('   - "' + item.name + '" = ' + (typeof item.value === 'object' ? '[File/Object]' : item.value));
+            });
+            
+            // Show all uploaded file keys
+            console.log('');
+            console.log('📁 Available Uploaded File Keys:');
+            if (this.uploadedFiles && Object.keys(this.uploadedFiles).length > 0) {
+                Object.keys(this.uploadedFiles).forEach(key => {
+                    console.log('   - "' + key + '" = ' + this.uploadedFiles[key]);
+                });
+            } else {
+                console.log('   (No files uploaded)');
+            }
+            
+            console.log('');
+            console.log('🔍 DETAILED FIELD MAPPING DEBUG:');
+            console.log('================================');
 
             // Map form fields to sheet columns
             for (const [formField, sheetColumn] of Object.entries(fieldMapping)) {
-                let value = formData.find(item => item.name === formField);
+                console.log('');
+                console.log(`🔹 Processing field: "${formField}" → "${sheetColumn}"`);
                 
-                // Check if this field has an uploaded file - PRIORITIZE uploaded file URL
-                // Try both with and without brackets (e.g., "file-225" and "file-225[]")
+                // Find value in CF7 form data
+                let value = formData.find(item => item.name === formField);
+                console.log(`   CF7 form data value:`, value ? value.value : 'NOT FOUND');
+                
+                // Normalize field names for uploaded files lookup
                 const normalizedFormField = formField.replace(/\[\]$/, '');
                 const formFieldWithBrackets = normalizedFormField + '[]';
                 
+                console.log(`   Looking for uploaded file:`);
+                console.log(`   - Key 1: "${normalizedFormField}" → ${this.uploadedFiles[normalizedFormField] || 'NOT FOUND'}`);
+                console.log(`   - Key 2: "${formFieldWithBrackets}" → ${this.uploadedFiles[formFieldWithBrackets] || 'NOT FOUND'}`);
+                
+                // Check if this field has an uploaded file - PRIORITIZE uploaded file URL
                 if (this.uploadedFiles && (this.uploadedFiles[normalizedFormField] || this.uploadedFiles[formFieldWithBrackets])) {
                     const fileUrl = this.uploadedFiles[normalizedFormField] || this.uploadedFiles[formFieldWithBrackets];
                     mappedData[sheetColumn] = fileUrl;
-                    console.log('✅ 📎 Using UPLOADED file URL for', formField, '→', sheetColumn, ':', fileUrl);
+                    console.log(`   ✅ USING UPLOADED FILE URL: ${fileUrl}`);
                 } else if (value) {
                     // IMPORTANT: Only use scalar values, not File/Blob objects
                     // If value.value is a File object or Blob, skip it
                     if (value.value instanceof File || value.value instanceof Blob || 
                         (typeof value.value === 'object' && value.value !== null && value.value.constructor.name === 'File')) {
-                        console.warn('⚠️ Skipping File/Blob object for field:', formField);
+                        console.warn(`   ⚠️ Value is a File/Blob object - cannot send to sheets`);
+                        console.warn(`   ⚠️ This means the file was not uploaded to WordPress first!`);
                         mappedData[sheetColumn] = ''; // Use empty string for file fields without URLs
                     } else {
                         // Use regular form field value (ensure it's a string)
                         mappedData[sheetColumn] = String(value.value || '');
-                        console.log('✅ 📝 Using text value for', formField, '→', sheetColumn, ':', value.value);
+                        console.log(`   ✅ USING TEXT VALUE: ${value.value}`);
                     }
                 } else {
-                    console.warn('⚠️ Field', formField, 'not found in form data or uploaded files');
+                    console.warn(`   ❌ FIELD NOT FOUND - Setting empty string`);
+                    console.warn(`   💡 TIP: Check if field name "${formField}" matches CF7 field name exactly`);
                     mappedData[sheetColumn] = '';
                 }
             }
 
-            // Add timestamp
-            mappedData['Timestamp'] = new Date().toISOString();
-            
-            console.log('📦 Final Mapped Data for Google Sheets:', mappedData);
+            console.log('');
+            console.log('================================');
+            console.log('📦 Final Mapped Data for Google Sheets:');
+            console.log(mappedData);
+            console.log('========================================');
+            console.log('');
 
             // Prepare AJAX data based on authentication method
             const authMethod = this.googleSheetsData.authMethod || 'service_account';
