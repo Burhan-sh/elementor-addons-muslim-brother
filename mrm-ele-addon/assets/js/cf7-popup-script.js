@@ -19,6 +19,12 @@
             this.widgetId = this.config.widgetId || '';
             this.cookieName = 'mrm_cf7_popup_' + this.widgetId;
             
+            // Add flags to prevent duplicate submissions
+            this.isSubmitting = false;
+            this.isFileUploading = false;
+            this.googleSheetsSent = false;
+            this.uploadedFiles = {};
+            
             this.init();
         }
 
@@ -139,6 +145,9 @@
             this.$modal.addClass('active');
             $('body').addClass('mrm-popup-open');
             
+            // Reset flags when opening popup
+            this.resetSubmissionFlags();
+            
             // Track popup display
             this.trackPopupDisplay();
             
@@ -149,6 +158,9 @@
         closePopup() {
             this.$modal.removeClass('active');
             $('body').removeClass('mrm-popup-open');
+            
+            // Reset all flags when closing
+            this.resetSubmissionFlags();
             
             // Trigger custom event
             $(document).trigger('mrm_cf7_popup_closed', [this.widgetId]);
@@ -180,47 +192,93 @@
                 return;
             }
 
-            // Store uploaded file URLs
-            this.uploadedFiles = {};
-
             // Handle form submission - intercept to upload files first
             $cf7Form.on('submit', (e) => {
+                // Prevent duplicate submissions
+                if (this.isSubmitting) {
+                    console.warn('⚠️ Form is already submitting, preventing duplicate submission');
+                    e.preventDefault();
+                    return false;
+                }
+
                 const hasFiles = this.hasFileUploads($cf7Form);
                 
-                if (hasFiles) {
+                if (hasFiles && !this.isFileUploading) {
+                    console.log('📁 Files detected, uploading first...');
                     e.preventDefault();
+                    this.isSubmitting = true;
+                    this.isFileUploading = true;
                     this.$form.addClass('submitting');
                     this.uploadFilesBeforeSubmit($cf7Form);
-                } else {
+                } else if (!hasFiles) {
+                    // No files, allow normal submission
+                    this.isSubmitting = true;
                     this.$form.addClass('submitting');
                 }
             });
 
-            // Listen for CF7 events
-            document.addEventListener('wpcf7mailsent', (event) => {
-                if ($.contains(this.$modal[0], event.target)) {
-                    this.$form.removeClass('submitting');
-                    this.handleFormSuccess(event);
+            // Listen for CF7 events - use one-time handler to prevent multiple calls
+            const handleMailSent = (event) => {
+                if (!$.contains(this.$modal[0], event.target)) {
+                    return;
                 }
-            }, false);
 
-            document.addEventListener('wpcf7mailfailed', (event) => {
-                if ($.contains(this.$modal[0], event.target)) {
-                    this.$form.removeClass('submitting');
+                console.log('✅ CF7 mail sent event received');
+                
+                // Prevent duplicate handling
+                if (this.googleSheetsSent) {
+                    console.warn('⚠️ Google Sheets data already sent, skipping duplicate');
+                    return;
                 }
-            }, false);
 
-            document.addEventListener('wpcf7invalid', (event) => {
-                if ($.contains(this.$modal[0], event.target)) {
-                    this.$form.removeClass('submitting');
-                }
-            }, false);
+                this.$form.removeClass('submitting');
+                this.handleFormSuccess(event);
+            };
 
-            document.addEventListener('wpcf7spam', (event) => {
+            const handleMailFailed = (event) => {
                 if ($.contains(this.$modal[0], event.target)) {
+                    console.error('❌ CF7 mail failed');
                     this.$form.removeClass('submitting');
+                    this.resetSubmissionFlags();
                 }
-            }, false);
+            };
+
+            const handleInvalid = (event) => {
+                if ($.contains(this.$modal[0], event.target)) {
+                    console.warn('⚠️ CF7 form validation failed');
+                    this.$form.removeClass('submitting');
+                    this.resetSubmissionFlags();
+                }
+            };
+
+            const handleSpam = (event) => {
+                if ($.contains(this.$modal[0], event.target)) {
+                    console.warn('⚠️ CF7 spam detected');
+                    this.$form.removeClass('submitting');
+                    this.resetSubmissionFlags();
+                }
+            };
+
+            // Remove any existing listeners first
+            document.removeEventListener('wpcf7mailsent', handleMailSent);
+            document.removeEventListener('wpcf7mailfailed', handleMailFailed);
+            document.removeEventListener('wpcf7invalid', handleInvalid);
+            document.removeEventListener('wpcf7spam', handleSpam);
+
+            // Add new listeners
+            document.addEventListener('wpcf7mailsent', handleMailSent, false);
+            document.addEventListener('wpcf7mailfailed', handleMailFailed, false);
+            document.addEventListener('wpcf7invalid', handleInvalid, false);
+            document.addEventListener('wpcf7spam', handleSpam, false);
+        }
+
+        resetSubmissionFlags() {
+            this.isSubmitting = false;
+            this.isFileUploading = false;
+            this.googleSheetsSent = false;
+            this._googleSheetsSending = false;
+            this.uploadedFiles = {};
+            console.log('🔄 All submission flags reset');
         }
 
         hasFileUploads($form) {
@@ -235,6 +293,8 @@
             const uploadPromises = [];
 
             console.log('📤 Starting file uploads...');
+            console.log('🔄 Clearing previous uploaded files...');
+            this.uploadedFiles = {}; // Clear previous uploads
 
             $fileInputs.each((index, input) => {
                 const $input = $(input);
@@ -245,7 +305,7 @@
                     
                     for (let i = 0; i < files.length; i++) {
                         const file = files[i];
-                        console.log('📁 Uploading file:', file.name, 'for field:', fieldName);
+                        console.log('📁 Uploading file:', file.name, '(' + (file.size / 1024).toFixed(2) + ' KB) for field:', fieldName);
                         
                         const promise = this.uploadSingleFile(file, fieldName);
                         uploadPromises.push(promise);
@@ -253,7 +313,16 @@
                 }
             });
 
-            // Wait for all uploads to complete
+            if (uploadPromises.length === 0) {
+                console.warn('⚠️ No files to upload');
+                this.isFileUploading = false;
+                this.submitFormAfterUpload($form);
+                return;
+            }
+
+            console.log('⏳ Waiting for ' + uploadPromises.length + ' file(s) to upload...');
+
+            // Wait for ALL uploads to complete
             Promise.all(uploadPromises)
                 .then((results) => {
                     console.log('✅ All files uploaded successfully:', results);
@@ -269,12 +338,16 @@
                         }
                     });
 
+                    console.log('📦 Final uploaded files object:', this.uploadedFiles);
+                    this.isFileUploading = false;
+
                     // Now submit the form normally (CF7 will handle it)
                     this.submitFormAfterUpload($form);
                 })
                 .catch((error) => {
                     console.error('❌ File upload failed:', error);
                     this.$form.removeClass('submitting');
+                    this.resetSubmissionFlags();
                     
                     // Show error message
                     const $response = $form.find('.wpcf7-response-output');
@@ -284,11 +357,22 @@
 
         uploadSingleFile(file, fieldName) {
             return new Promise((resolve, reject) => {
+                // Validate file size (max 5MB as per user requirement)
+                const maxSize = 5 * 1024 * 1024; // 5MB in bytes
+                if (file.size > maxSize) {
+                    const errorMsg = 'File ' + file.name + ' exceeds 5MB limit (' + (file.size / 1024 / 1024).toFixed(2) + ' MB)';
+                    console.error('❌', errorMsg);
+                    reject(errorMsg);
+                    return;
+                }
+
                 const formData = new FormData();
                 formData.append('action', 'mrm_cf7_popup_upload_file');
                 formData.append('nonce', mrmCF7PopupData.nonce);
                 formData.append('file', file);
                 formData.append('field_name', fieldName);
+
+                console.log('⏳ Uploading:', file.name, '(' + (file.size / 1024).toFixed(2) + ' KB)');
 
                 $.ajax({
                     url: mrmCF7PopupData.ajaxUrl,
@@ -296,52 +380,96 @@
                     data: formData,
                     processData: false,
                     contentType: false,
+                    timeout: 60000, // 60 second timeout for large files
+                    xhr: function() {
+                        const xhr = new window.XMLHttpRequest();
+                        // Upload progress
+                        xhr.upload.addEventListener('progress', function(evt) {
+                            if (evt.lengthComputable) {
+                                const percentComplete = (evt.loaded / evt.total) * 100;
+                                console.log('📊 Upload progress:', file.name, percentComplete.toFixed(1) + '%');
+                            }
+                        }, false);
+                        return xhr;
+                    },
                     success: (response) => {
                         if (response.success) {
-                            console.log('✅ File uploaded:', response.data.file_name, '→', response.data.url);
+                            console.log('✅ File uploaded successfully!');
+                            console.log('   File:', response.data.file_name);
+                            console.log('   URL:', response.data.url);
+                            console.log('   Field:', response.data.field_name);
                             resolve(response);
                         } else {
-                            console.error('❌ Upload failed:', response.data.message);
-                            reject(response.data.message);
+                            console.error('❌ Upload failed:', response.data ? response.data.message : 'Unknown error');
+                            reject(response.data ? response.data.message : 'Upload failed');
                         }
                     },
                     error: (xhr, status, error) => {
-                        console.error('❌ Upload AJAX error:', error);
-                        reject(error);
+                        console.error('❌ Upload AJAX error for', file.name);
+                        console.error('   Status:', status);
+                        console.error('   Error:', error);
+                        reject(error || 'Network error during upload');
                     }
                 });
             });
         }
 
         submitFormAfterUpload($form) {
-            console.log('📨 Submitting form after file uploads...');
+            console.log('📨 Submitting form after file uploads complete...');
+            console.log('📦 Files ready to be included:', this.uploadedFiles);
             
-            // Remove the submit event handler temporarily to avoid loop
-            $form.off('submit');
+            // Set flag to indicate we're submitting after upload
+            // This prevents the submit handler from intercepting again
+            this.isFileUploading = false;
             
-            // Trigger CF7 submission
+            // Trigger CF7 submission programmatically
             const submitButton = $form.find('input[type="submit"]')[0];
             if (submitButton) {
+                // Temporarily disable our submit handler
+                $form.off('submit.mrmFileUpload');
+                
+                // Click submit button
                 submitButton.click();
+                
+                // Re-attach after a delay
+                setTimeout(() => {
+                    $form.on('submit.mrmFileUpload', (e) => {
+                        if (this.isSubmitting) {
+                            e.preventDefault();
+                            return false;
+                        }
+                    });
+                }, 500);
             } else {
-                // Fallback: trigger form submit
-                $form[0].submit();
+                console.error('❌ Submit button not found');
+                this.resetSubmissionFlags();
+                this.$form.removeClass('submitting');
             }
-            
-            // Re-attach the submit handler after a short delay
-            setTimeout(() => {
-                this.initCF7Integration();
-            }, 100);
         }
 
         handleFormSuccess(event) {
-            // Send to Google Sheets if enabled
+            console.log('🎉 Form submission successful!');
+            
+            // Prevent duplicate submissions - this is the KEY fix
+            if (this.googleSheetsSent) {
+                console.warn('⚠️ Already processed this submission, skipping duplicate');
+                return;
+            }
+            
+            // Mark as sent IMMEDIATELY to prevent any race conditions
+            this.googleSheetsSent = true;
+            
+            // Send to Google Sheets if enabled - ONLY ONCE
             if (this.googleSheetsData.enabled) {
+                console.log('📊 Sending to Google Sheets (ONE TIME ONLY)...');
                 this.sendToGoogleSheets(event.detail.inputs);
+            } else {
+                console.log('ℹ️ Google Sheets integration is disabled');
             }
 
             // Send CC email if enabled
             if (this.ccEmail) {
+                console.log('📧 Sending CC email...');
                 this.sendCCEmail(event.detail.inputs);
             }
 
@@ -353,6 +481,8 @@
                 if ($form.length) {
                     $form[0].reset();
                 }
+                // Reset flags for next submission
+                this.resetSubmissionFlags();
             }, 2000);
 
             // Trigger custom event
@@ -360,20 +490,33 @@
         }
 
         sendToGoogleSheets(formData) {
+            // Additional check to prevent duplicate calls
+            if (this._googleSheetsSending) {
+                console.error('❌ DUPLICATE CALL DETECTED - Google Sheets AJAX already in progress!');
+                return;
+            }
+            
+            this._googleSheetsSending = true;
+            
             // Debug logging
-            console.log('📊 Google Sheets Data:', this.googleSheetsData);
-            console.log('📁 Uploaded Files:', this.uploadedFiles);
+            console.log('========================================');
+            console.log('📊 SENDING TO GOOGLE SHEETS (ONE TIME)');
+            console.log('========================================');
+            console.log('📊 Google Sheets Config:', this.googleSheetsData);
+            console.log('📁 Uploaded Files Ready:', this.uploadedFiles);
             console.log('📋 Form Data from CF7:', formData);
             
             // Prepare data for Google Sheets
             const fieldMapping = JSON.parse(this.googleSheetsData.fieldMapping || '{}');
             const mappedData = {};
 
+            console.log('🗺️ Field Mapping:', fieldMapping);
+
             // Map form fields to sheet columns
             for (const [formField, sheetColumn] of Object.entries(fieldMapping)) {
                 let value = formData.find(item => item.name === formField);
                 
-                // Check if this field has an uploaded file - prioritize uploaded file URL
+                // Check if this field has an uploaded file - PRIORITIZE uploaded file URL
                 // Try both with and without brackets (e.g., "file-225" and "file-225[]")
                 const normalizedFormField = formField.replace(/\[\]$/, '');
                 const formFieldWithBrackets = normalizedFormField + '[]';
@@ -381,26 +524,29 @@
                 if (this.uploadedFiles && (this.uploadedFiles[normalizedFormField] || this.uploadedFiles[formFieldWithBrackets])) {
                     const fileUrl = this.uploadedFiles[normalizedFormField] || this.uploadedFiles[formFieldWithBrackets];
                     mappedData[sheetColumn] = fileUrl;
-                    console.log('📎 Using uploaded file URL for', formField, ':', fileUrl);
+                    console.log('✅ 📎 Using UPLOADED file URL for', formField, '→', sheetColumn, ':', fileUrl);
                 } else if (value) {
                     // IMPORTANT: Only use scalar values, not File/Blob objects
                     // If value.value is a File object or Blob, skip it
                     if (value.value instanceof File || value.value instanceof Blob || 
-                        (typeof value.value === 'object' && value.value !== null)) {
-                        console.warn('⚠️ Skipping non-scalar value for field:', formField);
+                        (typeof value.value === 'object' && value.value !== null && value.value.constructor.name === 'File')) {
+                        console.warn('⚠️ Skipping File/Blob object for field:', formField);
                         mappedData[sheetColumn] = ''; // Use empty string for file fields without URLs
                     } else {
                         // Use regular form field value (ensure it's a string)
                         mappedData[sheetColumn] = String(value.value || '');
-                        console.log('📝 Using form value for', formField, ':', value.value);
+                        console.log('✅ 📝 Using text value for', formField, '→', sheetColumn, ':', value.value);
                     }
                 } else {
                     console.warn('⚠️ Field', formField, 'not found in form data or uploaded files');
+                    mappedData[sheetColumn] = '';
                 }
             }
 
             // Add timestamp
             mappedData['Timestamp'] = new Date().toISOString();
+            
+            console.log('📦 Final Mapped Data for Google Sheets:', mappedData);
 
             // Prepare AJAX data based on authentication method
             const authMethod = this.googleSheetsData.authMethod || 'service_account';
@@ -457,19 +603,29 @@
             if (ajaxData.file_id) plainAjaxData.file_id = String(ajaxData.file_id);
             if (ajaxData.webhook_url) plainAjaxData.webhook_url = String(ajaxData.webhook_url);
 
-            console.log('📤 Sending to Google Sheets:', plainAjaxData);
+            console.log('📤 Sending AJAX request to Google Sheets...');
+            console.log('📤 Request Data:', plainAjaxData);
 
+            // Send AJAX - with timeout to prevent hanging
             $.ajax({
                 url: mrmCF7PopupData.ajaxUrl,
                 type: 'POST',
                 data: plainAjaxData,
                 dataType: 'json',
+                timeout: 30000, // 30 second timeout
                 success: (response) => {
+                    this._googleSheetsSending = false; // Reset flag
+                    
                     if (response.success) {
-                        console.log('✅ Data sent to Google Sheets successfully');
+                        console.log('========================================');
+                        console.log('✅ ✅ ✅ SUCCESS! Data sent to Google Sheets!');
+                        console.log('========================================');
                         console.log('Response:', response.data);
                     } else {
-                        console.error('❌ Failed to send data to Google Sheets:', response.data);
+                        console.error('========================================');
+                        console.error('❌ Failed to send data to Google Sheets');
+                        console.error('========================================');
+                        console.error('Error:', response.data);
                         if (response.data && response.data.message) {
                             console.error('Error message:', response.data.message);
                         }
@@ -479,7 +635,12 @@
                     }
                 },
                 error: (xhr, status, error) => {
-                    console.error('❌ Google Sheets AJAX error:', error);
+                    this._googleSheetsSending = false; // Reset flag
+                    
+                    console.error('========================================');
+                    console.error('❌ Google Sheets AJAX Error');
+                    console.error('========================================');
+                    console.error('Error:', error);
                     console.error('Status:', status);
                     console.error('Response:', xhr.responseText);
                 }
