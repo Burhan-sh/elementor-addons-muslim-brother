@@ -113,6 +113,19 @@ final class MRM_Ele_Addon {
         if (file_exists(__DIR__ . '/includes/cf7-popup-security.php')) {
             require_once(__DIR__ . '/includes/cf7-popup-security.php');
         }
+
+        // Load Registration Entries Database Handler
+        if (file_exists(__DIR__ . '/includes/registration-entries-db.php')) {
+            require_once(__DIR__ . '/includes/registration-entries-db.php');
+            // Make DB handler globally accessible
+            global $mrm_registration_db;
+            $mrm_registration_db = new MRM_Registration_Entries_DB();
+        }
+
+        // Load Registration Entries Admin (only in admin)
+        if (is_admin() && file_exists(__DIR__ . '/includes/registration-entries-admin.php')) {
+            require_once(__DIR__ . '/includes/registration-entries-admin.php');
+        }
     }
 
     /**
